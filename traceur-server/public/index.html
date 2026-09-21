@@ -646,7 +646,13 @@
     <p class="panel-title" id="profil-fenetre"></p>
     <div class="bilan-grid" id="profil-grid"></div>
     <div id="profil-records"></div>
-    <div class="save-bar"><button class="btn btn-primary" id="profil-objectif-btn">Modifier mon objectif</button></div>
+    <p class="note" id="profil-meteo-statut"></p>
+    <p class="note" id="profil-push-statut"></p>
+    <div class="save-bar">
+      <button class="btn" id="profil-meteo-btn" hidden>Activer la météo dans mon plan</button>
+      <button class="btn" id="profil-push-btn" hidden>Activer les rappels du jour</button>
+      <button class="btn btn-primary" id="profil-objectif-btn">Modifier mon objectif</button>
+    </div>
   </div>
 
   <!-- ===== OBJECTIF ===== -->
@@ -2324,6 +2330,46 @@
       [el("b", {text:"Objectif précis"}), el("span", {text:"Une course, un événement, avec ou sans date."})]));
   }
 
+  // Demande la position une seule fois (bouton ou fin du questionnaire de
+  // départ, jamais en douce) : sert uniquement à récupérer la météo à venir
+  // pour adapter le plan. Refus ou navigateur sans support = tant pis, le
+  // plan continue de marcher normalement, juste sans tenir compte de la pluie.
+  function demanderMeteo(){
+    if(!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(function(pos){
+      fetch("/api/localisation", {method:"POST", credentials:"same-origin", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({lat:pos.coords.latitude, lon:pos.coords.longitude})})
+        .then(function(){ chargerPlan(); })
+        .catch(function(){});
+    }, function(){}, {timeout:8000});
+  }
+
+  function base64VersUint8(base64){
+    var brut = atob(base64.replace(/-/g,"+").replace(/_/g,"/"));
+    var out = new Uint8Array(brut.length);
+    for(var i=0;i<brut.length;i++) out[i] = brut.charCodeAt(i);
+    return out;
+  }
+
+  // Rappel du jour : demande la permission de notification, puis s'abonne
+  // au service worker. Refus ou navigateur sans support = tant pis, aucune
+  // conséquence sur le reste de l'appli.
+  async function abonnerRappels(){
+    if(!("serviceWorker" in navigator) || !("PushManager" in window)) return false;
+    try{
+      var r = await fetch("/api/push/cle-publique", {credentials:"same-origin"});
+      var d = await r.json();
+      if(!d.cle) return false;
+      var permission = await Notification.requestPermission();
+      if(permission !== "granted") return false;
+      var reg = await navigator.serviceWorker.register("/sw.js");
+      var sub = await reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:base64VersUint8(d.cle)});
+      await fetch("/api/push/abonner", {method:"POST", credentials:"same-origin", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({subscription:sub})});
+      return true;
+    }catch(e){ return false; }
+  }
+
   async function validerObjectif(type, description, dateCible, distanceKm, deniveleM){
     state.objectif = {type:type, description:description, date_cible:dateCible, distance_km:distanceKm, denivele_m:deniveleM};
     try{
@@ -2331,13 +2377,15 @@
         body:JSON.stringify({type:type, description:description, date_cible:dateCible, distance_km:distanceKm, denivele_m:deniveleM})});
     }catch(e){}
     majBanniereObjectif();
+    if(objectifPremiereFois) demanderMeteo();
     showScreen(ecranPrecedentObjectif === "screen-profil" ? "screen-profil" : "screen-home");
     chargerPlan();
   }
 
-  var ecranPrecedentObjectif = "screen-home";
+  var ecranPrecedentObjectif = "screen-home", objectifPremiereFois = false;
   function ouvrirObjectif(premiereFois, retourVers){
     ecranPrecedentObjectif = retourVers || "screen-home";
+    objectifPremiereFois = !!premiereFois;
     objectifBackBtn.hidden = !!premiereFois;
     construireListeObjectif();
     objectifCourseEl.hidden = true;
@@ -2394,6 +2442,14 @@
           el("span", {text:bouts.join(" · ")})
         ]));
       });
+      $("profil-meteo-statut").textContent = data.meteoActivee
+        ? "Météo dans le plan : activée (le plan évite les sorties longues les jours de grosse pluie)."
+        : "Météo dans le plan : désactivée.";
+      $("profil-meteo-btn").hidden = !!data.meteoActivee;
+      $("profil-push-statut").textContent = data.rappelsActives
+        ? "Rappels du jour : activés."
+        : "Rappels du jour : désactivés.";
+      $("profil-push-btn").hidden = !!data.rappelsActives;
     }catch(e){
       $("profil-fenetre").textContent = "Statistiques indisponibles pour le moment.";
     }
@@ -2402,6 +2458,17 @@
   accountChip.addEventListener("click", function(){ if(state.connectStatus === "connected") ouvrirProfil(); });
   $("profil-back").addEventListener("click", function(){ showScreen("screen-home"); });
   $("profil-objectif-btn").addEventListener("click", function(){ ouvrirObjectif(false, "screen-profil"); });
+  $("profil-meteo-btn").addEventListener("click", function(){
+    demanderMeteo();
+    $("profil-meteo-statut").textContent = "Position demandée…";
+    setTimeout(ouvrirProfil, 1500);
+  });
+  $("profil-push-btn").addEventListener("click", async function(){
+    $("profil-push-statut").textContent = "Activation…";
+    var ok = await abonnerRappels();
+    $("profil-push-statut").textContent = ok ? "Rappels du jour : activés." : "Notification refusée ou indisponible sur ce navigateur.";
+    $("profil-push-btn").hidden = ok;
+  });
 
   // ---------------------------------------------------------------
   // Plan d'entraînement (2 semaines)

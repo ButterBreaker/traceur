@@ -17,7 +17,7 @@ parle-lui en français, simplement, sans jargon, avec des étapes concrètes. R�
   - écran d'accueil : le coach est en premier (carte mise en avant, `coach-hero`), avec un aperçu de sa dernière réponse une fois la conversation commencée ; juste en dessous, la carte « Mon plan » (aperçu du jour même) ; « Créer une story » et la liste des sorties viennent juste après, en second plan. Une bannière invite à choisir un objectif si aucun n'est encore défini ;
   - écran « Ton objectif » (`screen-objectif`) : montré tout seul à la 1re connexion (choix rapides ou objectif précis, bouton « Plus tard »), rouvrable depuis la bannière d'accueil ;
   - écran « Mon plan » (`screen-plan`) : les 14 prochains jours regroupés par semaine, un jour par carte (icône + couleur selon le type, description, statut), modifiable (marquer fait/manqué, changer le type d'un jour à venir) ;
-  - le pseudo dans la barre du haut (`account-chip`, uniquement si connecté) ouvre l'écran « Profil » (`screen-profil`, `GET /api/profil`) : stats sur les 63 derniers jours (sorties, distance, D+, terrain dominant) + records par sport, et un bouton pour rouvrir l'écran objectif et le modifier ;
+  - le pseudo dans la barre du haut (`account-chip`, uniquement si connecté) ouvre l'écran « Profil » (`screen-profil`, `GET /api/profil`) : stats sur les 63 derniers jours (sorties, distance, D+, terrain dominant) + records par sport, un bouton pour rouvrir l'écran objectif et le modifier, et deux réglages optionnels (voir plus bas) : météo dans le plan, et rappels du jour ;
   - écran « Mon coach » (`screen-coach`) : discussion avec le coach IA, ouverte depuis la carte d'accueil. La première question part toute seule ; la conversation vit dans le navigateur et repart de zéro à la déconnexion ;
   - écran « Bilan » (`screen-bilan`) : touche une sortie → un petit commentaire du coach (`GET /api/activities/:id/commentaire`, chargé à part, arrive après le reste) + stats complètes (distance, temps, allure, D+, calories, FC moyenne/max) + tracé + graphique allure/dénivelé/cardio. Pour un compte connecté, on touche ou survole le graphique pour faire avancer un point sur le tracé et voir le détail à cet endroit (comme Strava/Coros) — données via `GET /api/activities/:id/graphique`. En mode exemple, le graphique et le commentaire sont absents (pas de flux Strava), seules les stats totales s'affichent. Le bouton « Personnaliser la story » mène ensuite à l'éditeur ;
   - éditeur sur canvas 1080×1920 à base de calques (`text`, `stat`, `route`, `photo`) : glisser pour déplacer, pincer ou tirer la poignée pour redimensionner, aimantation au centre, annuler (↺ / Ctrl+Z) ;
@@ -30,7 +30,8 @@ parle-lui en français, simplement, sans jargon, avec des étapes concrètes. R�
 
 ## Secrets
 Variables d'environnement sur Render uniquement, **jamais dans le code ni dans le dépôt** (il est public) :
-`STRAVA_CLIENT_ID`, `STRAVA_CLIENT_SECRET`, `SESSION_SECRET`, `NODE_ENV=production`, `ANTHROPIC_API_KEY`, `DATABASE_URL`.
+`STRAVA_CLIENT_ID`, `STRAVA_CLIENT_SECRET`, `SESSION_SECRET`, `NODE_ENV=production`, `ANTHROPIC_API_KEY`, `DATABASE_URL`,
+`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (rappels du jour, générées une fois avec `npx web-push generate-vapid-keys`, jamais à régénérer sauf fuite), `CRON_SECRET` (protège l'appel du job planifié, voir plus bas).
 Le Client Secret a été partagé en clair dans une conversation : il faudra le régénérer sur strava.com/settings/api puis le mettre à jour sur Render.
 
 ## Strava
@@ -67,13 +68,23 @@ Pour un compte Strava connecté, le coach ignore les totaux envoyés par le navi
   - Marquer fait/manqué (`POST /api/plan/:jour` avec `statut`) est manuel: à chaque `GET /api/plan`, `reconcilierPasse` bascule aussi tout seul les jours passés encore à `prevu` en `fait` (une vraie sortie Strava existe ce jour) ou `manque` (aucune), sans appel IA.
   - Sur l'accueil : carte « Mon plan » (aperçu du jour même) → écran `screen-plan` (liste des 14 jours, boutons Marquer fait / Manqué / Changer →).
 
+### Génération automatique à la fin d'une sortie (webhook Strava)
+Au démarrage, le serveur vérifie (`assurerAbonnementWebhook`, seulement sur Render — jamais en local, pas d'URL publique) s'il existe déjà un abonnement webhook Strava pour cette appli, sinon en crée un (`https://traceur.onrender.com/webhook/strava`, un seul abonnement possible par appli). Dès qu'une sortie est postée sur Strava, `POST /webhook/strava` reçoit l'événement, répond tout de suite (Strava coupe après quelques secondes) et prépare en tâche de fond (`preChargerNouvelleActivite`) le commentaire du coach et le graphique du bilan — quand le sportif ouvre l'appli, tout est déjà prêt.
+Pour agir sans que le navigateur du sportif soit ouvert, le token Strava (access + refresh) est maintenant aussi gardé en base (`athletes.refresh_token/access_token/token_expires_at`, écrit à la connexion et à chaque rafraîchissement) — `getTokenForAthlete(athleteId)` s'en sert pour rafraîchir le token tout seul le moment venu.
+
+### Météo dans le plan
+Le sportif transmet sa position une seule fois, **jamais en douce** : soit à la fin du questionnaire de départ (choix de l'objectif), soit via un bouton dédié dans l'écran Profil (« Activer la météo dans mon plan »). Sert uniquement à interroger Open-Meteo (gratuit, aucune clé) pour les 14 prochains jours (`obtenirMeteo`, cache 6h sur `athletes.lat/lon/meteo_json`) — jamais pour deviner le terrain, qui reste basé sur l'historique Strava réel. `POST /api/localisation` enregistre la position et force une régénération immédiate du plan. Les jours de forte pluie (≥60 %) sont signalés à l'IA (`texteMeteo`), qui évite d'y placer une sortie longue ou du fractionné (`PLAN_CONSIGNES`).
+
+### Rappels du jour (notification push)
+Depuis l'écran Profil (« Activer les rappels du jour »), le navigateur enregistre un service worker (`public/sw.js`) et s'abonne aux notifications push (VAPID, bibliothèque `web-push`) ; l'abonnement est gardé dans `athletes.push_subscription`. Un job planifié sur Render (cron, en dehors du site lui-même — le site s'endort après 15 min, un cron le réveille) appelle chaque matin `GET /api/push/envoyer-jour?cle=CRON_SECRET` : pour chaque athlète abonné ayant une séance prévue aujourd'hui (hors repos), une notification part avec le type et la description du jour. Aucun appel Strava ni IA dans cette route — elle ne fait que lire le plan déjà en base, donc coût nul quel que soit le nombre d'athlètes. Un abonnement expiré (410/404) est effacé tout seul, sans réessayer.
+
 Suite prévue : les mêmes données via Coros (fréquence cardiaque, sommeil, récupération), pour les sportifs qui portent cette montre plutôt que de dépendre du capteur associé à Strava.
 
 ## Base de données
 - Postgres sur Render (service `traceur-db`, plan gratuit — **expire 30 jours après création**, à recréer ou passer en payant avant l'échéance). Connectée via `DATABASE_URL`.
 - Facultative comme `ANTHROPIC_API_KEY` : sans elle, le serveur démarre quand même (juste un message dans les logs), mais le coach oublie tout d'une visite à l'autre.
 - Deux tables, créées toutes seules au démarrage (`preparerBase()` dans `server.js`) :
-  - `athletes` (`strava_id`, `firstname`) — un enregistrement par connexion Strava (`/auth/callback`), retrouvé tout seul (`assurerAthleteId`) pour les sessions ouvertes avant l'arrivée de cette table.
+  - `athletes` (`strava_id`, `firstname`, `refresh_token`/`access_token`/`token_expires_at`, `lat`/`lon`/`meteo_json`, `push_subscription`) — un enregistrement par connexion Strava (`/auth/callback`), retrouvé tout seul (`assurerAthleteId`) pour les sessions ouvertes avant l'arrivée de cette table.
   - `coach_messages` (`strava_id`, `role`, `content`) — l'historique de la conversation avec le coach, 40 derniers messages chargés par `GET /api/coach/history`, alimentés à chaque `POST /api/coach` réussi.
   - `activity_details` (`strava_activity_id`, `strava_athlete_id`, `payload_json`) — cache du flux Strava d'une sortie (texte pour le coach + données du graphique bilan) ; une sortie Strava ne change jamais, donc jamais réinterrogée une fois en cache. Le cache n'est servi que si `strava_athlete_id` correspond à l'athlète qui demande — sinon nouvel appel Strava, qui refuse lui-même si l'activité n'est pas la sienne.
   - `objectifs` (`strava_id`, `type`, `description`, `date_cible`) — un par athlète.
