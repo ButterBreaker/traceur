@@ -46,14 +46,17 @@ Points communs :
 - Sans `ANTHROPIC_API_KEY`, le serveur démarre quand même, `/api/me` renvoie `ia:false`, et le bloc recap comme le bouton coach disparaissent.
 - Une clé se crée sur console.anthropic.com (facturation à l'usage). Si elle est refusée, les logs Render affichent « Clé ANTHROPIC_API_KEY refusée ».
 
-Le coach ne voit que les totaux (ni fréquence cardiaque, ni détail kilomètre par kilomètre) — suite prévue : cardio et splits via `/api/v3/activities/{id}/streams` (Strava), puis Coros.
+Pour un compte Strava connecté, le coach ignore les totaux envoyés par le navigateur et va rechercher lui-même les vraies sorties de l'athlète (jamais les identifiants envoyés par le client — évite qu'un visiteur puisse lire les données d'un autre). Les 5 sorties les plus récentes sont enrichies avec le détail Strava (`/api/v3/activities/{id}/streams`) : allure et dénivelé par km, fréquence cardiaque si un capteur était porté. En mode exemple (sans compte), on reste sur les totaux envoyés par le navigateur, comme avant.
+
+Suite prévue : les mêmes données via Coros (fréquence cardiaque, sommeil, récupération), pour les sportifs qui portent cette montre plutôt que de dépendre du capteur associé à Strava.
 
 ## Base de données
 - Postgres sur Render (service `traceur-db`, plan gratuit — **expire 30 jours après création**, à recréer ou passer en payant avant l'échéance). Connectée via `DATABASE_URL`.
 - Facultative comme `ANTHROPIC_API_KEY` : sans elle, le serveur démarre quand même (juste un message dans les logs), mais le coach oublie tout d'une visite à l'autre.
 - Deux tables, créées toutes seules au démarrage (`preparerBase()` dans `server.js`) :
-  - `athletes` (`strava_id`, `firstname`) — un enregistrement par connexion Strava (`/auth/callback`).
+  - `athletes` (`strava_id`, `firstname`) — un enregistrement par connexion Strava (`/auth/callback`), retrouvé tout seul (`assurerAthleteId`) pour les sessions ouvertes avant l'arrivée de cette table.
   - `coach_messages` (`strava_id`, `role`, `content`) — l'historique de la conversation avec le coach, 40 derniers messages chargés par `GET /api/coach/history`, alimentés à chaque `POST /api/coach` réussi.
+  - `activity_details` (`strava_activity_id`, `resume`) — cache du résumé Strava (allure et cardio par km) d'une sortie ; une sortie Strava ne change jamais, donc jamais réinterrogée une fois en cache.
 - Ce n'est pas lié à la session (cookie) : se reconnecter depuis un autre appareil retrouve la même conversation, tant que c'est le même compte Strava.
 - Mode exemple (sans compte) : aucune mémoire, comme avant — pas d'identité Strava à rattacher.
 

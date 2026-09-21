@@ -45,6 +45,11 @@ async function preparerBase() {
         created_at timestamptz not null default now()
       );
       create index if not exists coach_messages_strava_id_idx on coach_messages(strava_id, id);
+      create table if not exists activity_details (
+        strava_activity_id bigint primary key,
+        resume text not null,
+        created_at timestamptz not null default now()
+      );
     `);
     console.log("Base de données prête.");
   } catch (e) {
@@ -76,6 +81,80 @@ async function enregistrerEchangeCoach(stravaId, question, reponse) {
     `insert into coach_messages (strava_id, role, content) values ($1, 'user', $2), ($1, 'assistant', $3)`,
     [stravaId, question, reponse]
   );
+}
+
+// Résume le détail seconde par seconde d'une sortie (Strava "streams") en
+// quelques lignes lisibles : allure et dénivelé par km, fréquence cardiaque
+// si le sportif portait un capteur. Limité à 20 km pour ne pas noyer le coach
+// sur les sorties longues.
+function resumerFlux(streams) {
+  const dist = streams && streams.distance && streams.distance.data;
+  const temps = streams && streams.time && streams.time.data;
+  if (!Array.isArray(dist) || !Array.isArray(temps) || dist.length < 2) return null;
+  const totalKm = dist[dist.length - 1] / 1000;
+  if (totalKm < 1) return null;
+  const hr = streams.heartrate && Array.isArray(streams.heartrate.data) ? streams.heartrate.data : null;
+  const alt = streams.altitude && Array.isArray(streams.altitude.data) ? streams.altitude.data : null;
+
+  const nbSplits = Math.min(Math.floor(totalKm), 20);
+  const splits = [];
+  let iPrec = 0;
+  for (let km = 1; km <= nbSplits; km++) {
+    let i = iPrec;
+    while (i < dist.length && dist[i] < km * 1000) i++;
+    if (i >= dist.length) i = dist.length - 1;
+    const dt = temps[i] - temps[iPrec];
+    const bouts = [`${Math.floor(dt / 60)}:${String(Math.round(dt % 60)).padStart(2, "0")}/km`];
+    if (alt) {
+      const dplus = Math.round(alt[i] - alt[iPrec]);
+      bouts.push(`${dplus >= 0 ? "+" : ""}${dplus}m`);
+    }
+    if (hr) {
+      const zone = hr.slice(iPrec, i + 1);
+      if (zone.length) bouts.push(`${Math.round(zone.reduce((a, b) => a + b, 0) / zone.length)} bpm`);
+    }
+    splits.push(`${km}: ${bouts.join(", ")}`);
+    iPrec = i;
+  }
+  const lignes = [`Détail par km : ${splits.join(" | ")}`];
+  if (hr && hr.length) {
+    const max = Math.max(...hr), moy = Math.round(hr.reduce((a, b) => a + b, 0) / hr.length);
+    lignes.push(`Fréquence cardiaque : ${moy} bpm en moyenne, ${max} bpm max`);
+  }
+  return lignes.join("\n");
+}
+
+// Va chercher (et garde en cache, le détail d'une sortie Strava ne change
+// jamais) le résumé enrichi d'une activité. Renvoie null si Strava n'a pas
+// ce niveau de détail pour cette sortie (capteur GPS pauvre, activité
+// manuelle...) plutôt que de faire échouer le coach.
+async function detailActivite(token, activityId) {
+  if (pool) {
+    try {
+      const { rows } = await pool.query(`select resume from activity_details where strava_activity_id = $1`, [activityId]);
+      if (rows.length) return rows[0].resume;
+    } catch (e) {
+      console.error("lecture cache detailActivite:", e.message);
+    }
+  }
+  try {
+    const r = await fetch(
+      `https://www.strava.com/api/v3/activities/${activityId}/streams?keys=time,distance,heartrate,altitude&key_by_type=true`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (!r.ok) return null;
+    const resume = resumerFlux(await r.json());
+    if (resume && pool) {
+      pool.query(
+        `insert into activity_details (strava_activity_id, resume) values ($1, $2) on conflict (strava_activity_id) do nothing`,
+        [activityId, resume]
+      ).catch((e) => console.error("écriture cache detailActivite:", e.message));
+    }
+    return resume;
+  } catch (e) {
+    console.error("detailActivite:", e.message);
+    return null;
+  }
 }
 
 const app = express();
@@ -189,6 +268,48 @@ async function assurerAthleteId(req) {
   } catch (e) {
     console.error("assurerAthleteId:", e.message);
     return null;
+  }
+}
+
+// Les totaux envoyés par le navigateur ne servent qu'au mode exemple (sans
+// compte Strava). Pour un compte connecté, on va toujours chercher les
+// vraies sorties auprès de Strava avec le jeton de CET athlète : jamais les
+// identifiants de sortie envoyés par le client, qui pourraient être ceux de
+// quelqu'un d'autre.
+async function activitesPourCoach(req, activitesDemo) {
+  if (!req.session || !req.session.strava) return activitesDemo;
+  const token = await getToken(req);
+  if (!token) return activitesDemo;
+  try {
+    const r = await fetch("https://www.strava.com/api/v3/athlete/activities?per_page=15", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!r.ok) return activitesDemo;
+    const raw = await r.json();
+    const acts = raw
+      .filter((a) => a.distance > 0)
+      .slice(0, 10)
+      .map((a) => ({
+        id: a.id,
+        name: a.name,
+        sport: a.sport_type || a.type,
+        distance_m: a.distance,
+        moving_time_s: a.moving_time,
+        elevation_gain_m: a.total_elevation_gain,
+        calories: a.calories || null,
+        location: a.location_city || "",
+        date: (a.start_date_local || "").slice(0, 10),
+      }));
+    // Détail (cardio, km par km) sur les 5 plus récentes seulement : chaque
+    // sortie non encore vue coûte un appel Strava, les suivantes viennent du cache.
+    await Promise.all(acts.slice(0, 5).map(async (a) => {
+      const detail = await detailActivite(token, a.id);
+      if (detail) a.detail = detail;
+    }));
+    return acts;
+  } catch (e) {
+    console.error("activitesPourCoach:", e.message);
+    return activitesDemo;
   }
 }
 
@@ -308,14 +429,24 @@ function ficheActivite(body) {
 }
 
 // Carnet d'entraînement : une ligne par sortie, de la plus récente à la plus ancienne.
+// Certaines sorties (les plus récentes, si connecté à Strava) portent un
+// `.detail` déjà résumé par resumerFlux() : allure et cardio par km.
 function carnet(liste) {
   if (!Array.isArray(liste)) return null;
-  const lignes = liste.slice(0, 15).map(chiffres).filter(Boolean).map((c, i) => {
-    const bouts = [`${c.km.toFixed(2)} km`, duree(c.temps), c.rythme];
-    if (c.denivele != null) bouts.push(`${Math.round(c.denivele)} m D+`);
-    const entete = [c.date, c.lieu].filter(Boolean).join(", ");
-    return `${i + 1}. ${c.terrain}${entete ? ` — ${entete}` : ""} : ${bouts.join(", ")}`;
-  });
+  const lignes = liste.slice(0, 15)
+    .map((a) => {
+      const c = chiffres(a);
+      return c ? { a, c } : null;
+    })
+    .filter(Boolean)
+    .map(({ a, c }, i) => {
+      const bouts = [`${c.km.toFixed(2)} km`, duree(c.temps), c.rythme];
+      if (c.denivele != null) bouts.push(`${Math.round(c.denivele)} m D+`);
+      const entete = [c.date, c.lieu].filter(Boolean).join(", ");
+      let ligne = `${i + 1}. ${c.terrain}${entete ? ` — ${entete}` : ""} : ${bouts.join(", ")}`;
+      if (a.detail) ligne += `\n   ${a.detail}`;
+      return ligne;
+    });
   return lignes.length ? lignes.join("\n") : null;
 }
 
@@ -396,7 +527,7 @@ Ton rôle : lire son carnet d'entraînement et l'aider à progresser.
 - Appuie-toi sur ce que tu vois vraiment dans le carnet : régularité, volume, allure, dénivelé, écarts entre les sorties.
 - Parle comme un coach de club, pas comme une brochure : pas de superlatifs, pas de promesse de performance, pas de comparaison avec des athlètes professionnels.
 
-Ce que tu n'as pas : ni fréquence cardiaque, ni détail kilomètre par kilomètre, ni son âge, son poids ou son passé sportif. Quand il te manque une donnée pour répondre sérieusement, dis-le et demande-la lui, plutôt que de deviner.
+Pour les sorties récentes connectées à Strava, tu as parfois le détail kilomètre par kilomètre et la fréquence cardiaque (si le sportif portait un capteur) : utilise-les quand ils sont là, par exemple pour repérer où l'allure ou le cardio décrochent pendant l'effort. Ce que tu n'as jamais : son âge, son poids, son passé sportif, son sommeil ou sa récupération. Quand une donnée te manque pour répondre sérieusement, dis-le et demande-la, plutôt que de deviner.
 
 Prudence : tu n'es pas médecin. S'il parle de douleur, de blessure, de malaise, de fatigue anormale ou de perte de poids, ne pose aucun diagnostic : conseille-lui d'en parler à un médecin ou à un kinésithérapeute.
 
@@ -406,7 +537,8 @@ app.post("/api/coach", async (req, res) => {
   if (!anthropic) return res.status(503).json({ error: "ia_desactivee" });
   if (quotaDepasse(req.ip)) return res.status(429).json({ error: "trop_de_demandes" });
   const body = req.body || {};
-  const journal = carnet(body.activities);
+  const activites = await activitesPourCoach(req, body.activities);
+  const journal = carnet(activites);
   if (!journal) return res.status(400).json({ error: "pas_de_sorties" });
   const messages = conversation(body.messages);
   if (!messages.length) return res.status(400).json({ error: "message_vide" });
