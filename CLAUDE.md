@@ -16,6 +16,7 @@ parle-lui en français, simplement, sans jargon, avec des étapes concrètes. R�
   - écran de chargement → page de connexion (bouton Strava + « Voir un exemple sans compte ») → liste des sorties → éditeur de story ;
   - écran d'accueil : le coach est en premier (carte mise en avant, `coach-hero`), avec un aperçu de sa dernière réponse une fois la conversation commencée ; « Créer une story » et la liste des sorties viennent juste après, en second plan ;
   - écran « Mon coach » (`screen-coach`) : discussion avec le coach IA, ouverte depuis la carte d'accueil. La première question part toute seule ; la conversation vit dans le navigateur et repart de zéro à la déconnexion ;
+  - écran « Bilan » (`screen-bilan`) : touche une sortie → stats complètes (distance, temps, allure, D+, calories, FC moyenne/max) + tracé + graphique allure/dénivelé/cardio. Pour un compte connecté, on touche ou survole le graphique pour faire avancer un point sur le tracé et voir le détail à cet endroit (comme Strava/Coros) — données via `GET /api/activities/:id/graphique`. En mode exemple, le graphique est absent (pas de flux Strava), seules les stats totales s'affichent. Le bouton « Personnaliser la story » mène ensuite à l'éditeur ;
   - éditeur sur canvas 1080×1920 à base de calques (`text`, `stat`, `route`, `photo`) : glisser pour déplacer, pincer ou tirer la poignée pour redimensionner, aimantation au centre, annuler (↺ / Ctrl+Z) ;
   - onglets Modèles (6 : classique, minimal, chiffres, photo, sticker transparent, polaroid), Éléments, Photos (restent sur l'appareil, jamais envoyées), Style (fond, palettes, couleur du texte, polices Poppins / Bebas Neue / Anton / Oswald) ;
   - onglet Éléments : bloc « Texte écrit par l'IA » → 3 accroches à poser sur la story (une seule à la fois, le calque est réutilisé) + une légende à copier ;
@@ -56,7 +57,7 @@ Suite prévue : les mêmes données via Coros (fréquence cardiaque, sommeil, r�
 - Deux tables, créées toutes seules au démarrage (`preparerBase()` dans `server.js`) :
   - `athletes` (`strava_id`, `firstname`) — un enregistrement par connexion Strava (`/auth/callback`), retrouvé tout seul (`assurerAthleteId`) pour les sessions ouvertes avant l'arrivée de cette table.
   - `coach_messages` (`strava_id`, `role`, `content`) — l'historique de la conversation avec le coach, 40 derniers messages chargés par `GET /api/coach/history`, alimentés à chaque `POST /api/coach` réussi.
-  - `activity_details` (`strava_activity_id`, `resume`) — cache du résumé Strava (allure et cardio par km) d'une sortie ; une sortie Strava ne change jamais, donc jamais réinterrogée une fois en cache.
+  - `activity_details` (`strava_activity_id`, `strava_athlete_id`, `payload_json`) — cache du flux Strava d'une sortie (texte pour le coach + données du graphique bilan) ; une sortie Strava ne change jamais, donc jamais réinterrogée une fois en cache. Le cache n'est servi que si `strava_athlete_id` correspond à l'athlète qui demande — sinon nouvel appel Strava, qui refuse lui-même si l'activité n'est pas la sienne.
 - Ce n'est pas lié à la session (cookie) : se reconnecter depuis un autre appareil retrouve la même conversation, tant que c'est le même compte Strava.
 - Mode exemple (sans compte) : aucune mémoire, comme avant — pas d'identité Strava à rattacher.
 

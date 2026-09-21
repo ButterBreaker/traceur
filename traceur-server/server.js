@@ -47,9 +47,11 @@ async function preparerBase() {
       create index if not exists coach_messages_strava_id_idx on coach_messages(strava_id, id);
       create table if not exists activity_details (
         strava_activity_id bigint primary key,
-        resume text not null,
         created_at timestamptz not null default now()
       );
+      alter table activity_details add column if not exists strava_athlete_id bigint;
+      alter table activity_details add column if not exists payload_json text;
+      alter table activity_details drop column if exists resume;
     `);
     console.log("Base de données prête.");
   } catch (e) {
@@ -124,33 +126,79 @@ function resumerFlux(streams) {
   return lignes.join("\n");
 }
 
+// Sous-échantillonne le flux brut pour le graphique interactif : ~150 points
+// répartis régulièrement sur la distance (assez pour un tracé fluide, assez
+// peu pour rester léger sur mobile). Le tracé (route) vient de latlng.
+function graphiqueFlux(streams) {
+  const dist = streams && streams.distance && streams.distance.data;
+  const temps = streams && streams.time && streams.time.data;
+  if (!Array.isArray(dist) || !Array.isArray(temps) || dist.length < 2) return null;
+  const totalM = dist[dist.length - 1];
+  if (totalM < 400) return null;
+  const hr = streams.heartrate && Array.isArray(streams.heartrate.data) ? streams.heartrate.data : null;
+  const alt = streams.altitude && Array.isArray(streams.altitude.data) ? streams.altitude.data : null;
+  const latlng = streams.latlng && Array.isArray(streams.latlng.data) ? streams.latlng.data : null;
+
+  const NB_POINTS = 150;
+  const chart = { distance: [], temps: [], altitude: alt ? [] : null, heartrate: hr ? [] : null, latlng: latlng ? [] : null };
+  let iPrec = 0;
+  for (let p = 0; p <= NB_POINTS; p++) {
+    const cible = (totalM * p) / NB_POINTS;
+    let i = iPrec;
+    while (i < dist.length - 1 && dist[i] < cible) i++;
+    chart.distance.push(Math.round(dist[i]));
+    chart.temps.push(Math.round(temps[i]));
+    if (alt) chart.altitude.push(Math.round(alt[i] * 10) / 10);
+    if (hr) chart.heartrate.push(hr[i]);
+    if (latlng) chart.latlng.push(latlng[i]);
+    iPrec = i;
+  }
+  return chart;
+}
+
+// Un seul appel Strava produit à la fois le texte pour le coach et les
+// données du graphique interactif de l'écran bilan.
+function construireDetailActivite(streams) {
+  const resume = resumerFlux(streams);
+  const chart = graphiqueFlux(streams);
+  return resume || chart ? { resume, chart } : null;
+}
+
 // Va chercher (et garde en cache, le détail d'une sortie Strava ne change
-// jamais) le résumé enrichi d'une activité. Renvoie null si Strava n'a pas
-// ce niveau de détail pour cette sortie (capteur GPS pauvre, activité
-// manuelle...) plutôt que de faire échouer le coach.
-async function detailActivite(token, activityId) {
+// jamais) le résumé + le graphique d'une activité. Renvoie null si Strava
+// n'a pas ce niveau de détail (capteur GPS pauvre, activité manuelle...).
+// Le cache est vérifié par athlète : une sortie appartient à un seul
+// athlète Strava, donc un identifiant qui ne correspond pas à celui qui a
+// posé le cache déclenche un nouvel appel Strava (qui refusera lui-même
+// l'accès si l'activité n'appartient pas à ce jeton) plutôt que de renvoyer
+// des données à quelqu'un qui n'y a pas droit.
+async function detailActivite(token, activityId, athleteId) {
   if (pool) {
     try {
-      const { rows } = await pool.query(`select resume from activity_details where strava_activity_id = $1`, [activityId]);
-      if (rows.length) return rows[0].resume;
+      const { rows } = await pool.query(
+        `select payload_json from activity_details where strava_activity_id = $1 and strava_athlete_id = $2`,
+        [activityId, athleteId]
+      );
+      if (rows.length && rows[0].payload_json) return JSON.parse(rows[0].payload_json);
     } catch (e) {
       console.error("lecture cache detailActivite:", e.message);
     }
   }
   try {
     const r = await fetch(
-      `https://www.strava.com/api/v3/activities/${activityId}/streams?keys=time,distance,heartrate,altitude&key_by_type=true`,
+      `https://www.strava.com/api/v3/activities/${activityId}/streams?keys=time,distance,heartrate,altitude,latlng&key_by_type=true`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
     if (!r.ok) return null;
-    const resume = resumerFlux(await r.json());
-    if (resume && pool) {
+    const detail = construireDetailActivite(await r.json());
+    if (detail && pool) {
       pool.query(
-        `insert into activity_details (strava_activity_id, resume) values ($1, $2) on conflict (strava_activity_id) do nothing`,
-        [activityId, resume]
+        `insert into activity_details (strava_activity_id, strava_athlete_id, payload_json) values ($1, $2, $3)
+         on conflict (strava_activity_id) do update set strava_athlete_id = excluded.strava_athlete_id, payload_json = excluded.payload_json`,
+        [activityId, athleteId, JSON.stringify(detail)]
       ).catch((e) => console.error("écriture cache detailActivite:", e.message));
     }
-    return resume;
+    return detail;
   } catch (e) {
     console.error("detailActivite:", e.message);
     return null;
@@ -280,6 +328,7 @@ async function activitesPourCoach(req, activitesDemo) {
   if (!req.session || !req.session.strava) return activitesDemo;
   const token = await getToken(req);
   if (!token) return activitesDemo;
+  const athleteId = await assurerAthleteId(req);
   try {
     const r = await fetch("https://www.strava.com/api/v3/athlete/activities?per_page=15", {
       headers: { Authorization: `Bearer ${token}` },
@@ -303,8 +352,8 @@ async function activitesPourCoach(req, activitesDemo) {
     // Détail (cardio, km par km) sur les 5 plus récentes seulement : chaque
     // sortie non encore vue coûte un appel Strava, les suivantes viennent du cache.
     await Promise.all(acts.slice(0, 5).map(async (a) => {
-      const detail = await detailActivite(token, a.id);
-      if (detail) a.detail = detail;
+      const detail = await detailActivite(token, a.id, athleteId);
+      if (detail && detail.resume) a.detail = detail.resume;
     }));
     return acts;
   } catch (e) {
@@ -357,6 +406,27 @@ app.get("/api/activities", async (req, res) => {
         polyline: a.map.summary_polyline,
       }));
     res.json({ activities: acts });
+  } catch (e) {
+    console.error(e);
+    res.status(502).json({ error: "strava_indisponible" });
+  }
+});
+
+// Détail seconde par seconde d'une sortie, pour l'écran bilan (graphique
+// allure/dénivelé/cardio interactif). L'identifiant vient du navigateur mais
+// n'est jamais fait confiance aveuglément : detailActivite() ne sert le
+// cache que s'il appartient à CET athlète, et sinon retente auprès de
+// Strava avec son propre jeton — qui refusera si l'activité n'est pas la sienne.
+app.get("/api/activities/:id/graphique", async (req, res) => {
+  const activityId = Number(req.params.id);
+  if (!Number.isInteger(activityId) || activityId <= 0) return res.status(400).json({ error: "id_invalide" });
+  try {
+    const token = await getToken(req);
+    if (!token) return res.status(401).json({ error: "non_connecte" });
+    const athleteId = await assurerAthleteId(req);
+    const detail = await detailActivite(token, activityId, athleteId);
+    if (!detail || !detail.chart) return res.status(404).json({ error: "pas_de_detail" });
+    res.json({ chart: detail.chart });
   } catch (e) {
     console.error(e);
     res.status(502).json({ error: "strava_indisponible" });

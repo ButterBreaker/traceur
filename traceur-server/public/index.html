@@ -472,6 +472,19 @@
   .save-bar{position:sticky;bottom:0;padding:12px 0 calc(env(safe-area-inset-bottom,0px) + 12px);background:linear-gradient(rgba(14,14,16,0), var(--bg) 35%);margin-top:auto;z-index:4;}
   .save-bar .btn{width:100%;margin-top:0;}
   #screen-story{padding-bottom:0;}
+
+  /* ---------- bilan d'une sortie ---------- */
+  #screen-bilan{padding-bottom:0;}
+  .bilan-route-wrap{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:8px;margin:4px 0 16px;}
+  .bilan-route-wrap canvas{width:100%;height:auto;display:block;border-radius:10px;}
+  .bilan-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:18px;}
+  .bilan-stat{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;}
+  .bilan-stat b{display:block;font-size:19px;font-weight:700;font-variant-numeric:tabular-nums;}
+  .bilan-stat span{display:block;font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em;margin-top:2px;}
+  .bilan-graph-block{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:14px;}
+  .bilan-graph-block canvas{width:100%;height:auto;display:block;touch-action:none;cursor:crosshair;}
+  .bilan-readout{margin:10px 0 0;font-size:13.5px;font-weight:700;color:var(--text);min-height:18px;font-variant-numeric:tabular-nums;}
+  .bilan-graph-block .note{margin-top:8px;}
 </style>
 </head>
 <body>
@@ -552,6 +565,32 @@
       <input type="text" id="coach-input" placeholder="Pose ta question…" maxlength="500" autocomplete="off">
       <button class="coach-send" id="coach-send" aria-label="Envoyer">→</button>
     </div>
+  </div>
+
+  <!-- ===== BILAN D'UNE SORTIE ===== -->
+  <div class="screen" id="screen-bilan">
+    <div class="topbar">
+      <button class="back-btn" id="bilan-back" aria-label="Retour aux sorties">←</button>
+      <h1 id="bilan-title">Bilan</h1>
+    </div>
+
+    <div class="bilan-route-wrap"><canvas id="bilan-route" width="700" height="460"></canvas></div>
+
+    <div class="bilan-grid" id="bilan-grid"></div>
+
+    <div class="bilan-graph-block" id="bilan-graph-block" hidden>
+      <p class="panel-title">Allure &amp; dénivelé</p>
+      <canvas id="bilan-elev" width="700" height="150"></canvas>
+      <div id="bilan-hr-wrap" hidden>
+        <p class="panel-title" style="margin-top:14px;">Fréquence cardiaque</p>
+        <canvas id="bilan-hr" width="700" height="90"></canvas>
+      </div>
+      <p class="bilan-readout" id="bilan-readout" hidden></p>
+      <p class="note">Touche ou survole le graphique pour voir le détail seconde par seconde.</p>
+    </div>
+    <p class="note" id="bilan-note" hidden></p>
+
+    <div class="save-bar"><button class="btn btn-primary" id="bilan-story-btn">Personnaliser la story</button></div>
   </div>
 
   <!-- ===== ÉCRAN 2 : éditeur de story ===== -->
@@ -732,7 +771,8 @@
     tab: "presets",
     iaDispo: false,
     recap: {loading:false, phrases:[], legende:"", error:null},
-    coach: {messages:[], loading:false, error:null, demarre:false}
+    coach: {messages:[], loading:false, error:null, demarre:false},
+    bilan: {loading:false, chart:null, curseur:null}
   };
   var uid = 0;
   function nid(p){ return p + "-" + Date.now().toString(36) + "-" + (++uid); }
@@ -973,7 +1013,7 @@
     }
   }
 
-  function projectRoute(points, box){
+  function fabriqueProjecteur(points, box){
     var lats = points.map(function(p){ return p[0]; }), lons = points.map(function(p){ return p[1]; });
     var latMin = Math.min.apply(null, lats), latMax = Math.max.apply(null, lats);
     var lonMin = Math.min.apply(null, lons), lonMax = Math.max.apply(null, lons);
@@ -983,7 +1023,10 @@
     var bw = box.x1 - box.x0, bh = box.y1 - box.y0;
     var sc = Math.min(bw/lonSpan, bh/latSpan) * 0.92;
     var cx = box.x0 + bw/2, cy = box.y0 + bh/2, lonC = (lonMin+lonMax)/2, latC = (latMin+latMax)/2;
-    return points.map(function(p){ return [cx + (p[1]-lonC)*k*sc, cy - (p[0]-latC)*sc]; });
+    return function(p){ return [cx + (p[1]-lonC)*k*sc, cy - (p[0]-latC)*sc]; };
+  }
+  function projectRoute(points, box){
+    return points.map(fabriqueProjecteur(points, box));
   }
 
   function drawRoute(ctx, d, act, l, opt){
@@ -1833,7 +1876,7 @@
         '<div class="ac-top">' +
           '<div class="ac-icon">' + (SPORT_ICON[a.sport] || "🏅") + '</div>' +
           '<div><div class="ac-title"></div><div class="ac-sub"></div></div>' +
-          '<div class="ac-cta">Créer →</div>' +
+          '<div class="ac-cta">Voir →</div>' +
         '</div>' +
         '<div class="ac-stats">' +
           '<div class="ac-stat"><b>' + (a.distance_m/1000).toFixed(2) + ' km</b><span>Distance</span></div>' +
@@ -1844,10 +1887,180 @@
       var sub = card.querySelector(".ac-sub");
       if(a.demo) sub.appendChild(el("span", {class:"demo-pill", text:"Exemple"}));
       sub.appendChild(document.createTextNode([a.location, a.date].filter(Boolean).join(" · ")));
-      card.addEventListener("click", function(){ openStory(a); });
+      card.addEventListener("click", function(){ openBilan(a); });
       listEl.appendChild(card);
     });
   }
+
+  // ---------------------------------------------------------------
+  // Bilan d'une sortie : stats complètes + graphique interactif
+  // (allure, dénivelé, cardio), avant de passer à la story.
+  // ---------------------------------------------------------------
+  var bilanTitle = $("bilan-title"), bilanGrid = $("bilan-grid");
+  var bilanRouteCanvas = $("bilan-route"), bilanElevCanvas = $("bilan-elev"), bilanHrCanvas = $("bilan-hr");
+  var bilanGraphBlock = $("bilan-graph-block"), bilanHrWrap = $("bilan-hr-wrap");
+  var bilanReadoutEl = $("bilan-readout"), bilanNoteEl = $("bilan-note");
+
+  function bilanStat(label, value){
+    return el("div", {class:"bilan-stat"}, [el("b", {text:value}), el("span", {text:label})]);
+  }
+  function buildBilanStats(a, chart){
+    bilanGrid.innerHTML = "";
+    bilanGrid.appendChild(bilanStat("Distance", (a.distance_m/1000).toFixed(2) + " km"));
+    bilanGrid.appendChild(bilanStat("Temps", fmtTime(a.moving_time_s)));
+    var pace = fmtPace(a);
+    if(pace) bilanGrid.appendChild(bilanStat(/Ride/.test(a.sport) ? "Vitesse" : "Allure", pace));
+    if(a.elevation_gain_m != null) bilanGrid.appendChild(bilanStat("Dénivelé", Math.round(a.elevation_gain_m) + " m"));
+    if(a.calories) bilanGrid.appendChild(bilanStat("Calories", Math.round(a.calories) + " kcal"));
+    if(chart && chart.heartrate && chart.heartrate.length){
+      var somme = chart.heartrate.reduce(function(s, v){ return s + v; }, 0);
+      bilanGrid.appendChild(bilanStat("FC moyenne", Math.round(somme / chart.heartrate.length) + " bpm"));
+      bilanGrid.appendChild(bilanStat("FC max", Math.max.apply(null, chart.heartrate) + " bpm"));
+    }
+  }
+
+  function dessinerRouteBilan(canvas, activity, chart, idx){
+    var ctx = canvas.getContext("2d"), w = canvas.width, h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    var route = activity && activity.route;
+    if(!route || route.length < 2) return;
+    var box = {x0:24, y0:24, x1:w-24, y1:h-24};
+    var proj = fabriqueProjecteur(route, box);
+    var pts = route.map(proj);
+    ctx.beginPath();
+    pts.forEach(function(p, i){ i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); });
+    ctx.lineJoin = "round"; ctx.lineCap = "round";
+    ctx.strokeStyle = "#ff8a2e"; ctx.lineWidth = 5;
+    ctx.shadowColor = "#ff8a2e"; ctx.shadowBlur = 16;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = "#fff";
+    ctx.beginPath(); ctx.arc(pts[0][0], pts[0][1], 6, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = "#ff6a2e";
+    ctx.beginPath(); ctx.arc(pts[pts.length-1][0], pts[pts.length-1][1], 6, 0, Math.PI*2); ctx.fill();
+    if(chart && chart.latlng && idx != null){
+      var d = proj(chart.latlng[idx]);
+      ctx.beginPath(); ctx.arc(d[0], d[1], 9, 0, Math.PI*2);
+      ctx.fillStyle = "#fff"; ctx.fill();
+      ctx.lineWidth = 3; ctx.strokeStyle = "#ff6a2e"; ctx.stroke();
+    }
+  }
+
+  function dessinerCourbe(canvas, valeurs, idx, couleur, remplir){
+    var ctx = canvas.getContext("2d"), w = canvas.width, h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    if(!valeurs || valeurs.length < 2) return;
+    var min = Math.min.apply(null, valeurs), max = Math.max.apply(null, valeurs);
+    var span = Math.max(max - min, 1);
+    var pad = 8;
+    var xs = valeurs.map(function(_, i){ return (i / (valeurs.length - 1)) * w; });
+    var ys = valeurs.map(function(v){ return h - pad - ((v - min) / span) * (h - pad*2); });
+    if(remplir){
+      ctx.beginPath();
+      xs.forEach(function(x, i){ i ? ctx.lineTo(x, ys[i]) : ctx.moveTo(x, ys[i]); });
+      ctx.lineTo(w, h); ctx.lineTo(0, h); ctx.closePath();
+      var g = ctx.createLinearGradient(0, 0, 0, h);
+      g.addColorStop(0, couleur + "59"); g.addColorStop(1, couleur + "05");
+      ctx.fillStyle = g; ctx.fill();
+    }
+    ctx.beginPath();
+    xs.forEach(function(x, i){ i ? ctx.lineTo(x, ys[i]) : ctx.moveTo(x, ys[i]); });
+    ctx.strokeStyle = couleur; ctx.lineWidth = 2.5; ctx.lineJoin = "round"; ctx.stroke();
+    if(idx != null){
+      var cx = xs[idx];
+      ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, h);
+      ctx.strokeStyle = "rgba(255,255,255,.4)"; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx, ys[idx], 4.5, 0, Math.PI*2);
+      ctx.fillStyle = "#fff"; ctx.fill();
+    }
+  }
+
+  function bilanReadout(){
+    var c = state.bilan.chart, idx = state.bilan.curseur;
+    if(!c || idx == null){ bilanReadoutEl.hidden = true; return; }
+    bilanReadoutEl.hidden = false;
+    var bouts = [(c.distance[idx]/1000).toFixed(2) + " km"];
+    if(idx > 0){
+      var dd = c.distance[idx] - c.distance[idx-1], dt = c.temps[idx] - c.temps[idx-1];
+      if(dd > 0 && dt > 0){
+        var spk = dt / (dd/1000);
+        bouts.push(Math.floor(spk/60) + ":" + String(Math.round(spk%60)).padStart(2,"0") + "/km");
+      }
+    }
+    if(c.altitude) bouts.push(Math.round(c.altitude[idx]) + " m");
+    if(c.heartrate) bouts.push(c.heartrate[idx] + " bpm");
+    bilanReadoutEl.textContent = bouts.join("  ·  ");
+  }
+
+  function redessinerBilan(){
+    var c = state.bilan.chart, idx = state.bilan.curseur;
+    dessinerRouteBilan(bilanRouteCanvas, state.activity, c, idx);
+    if(c){
+      dessinerCourbe(bilanElevCanvas, c.altitude, idx, "#ff8a2e", true);
+      if(c.heartrate) dessinerCourbe(bilanHrCanvas, c.heartrate, idx, "#ff5470", false);
+    }
+    bilanReadout();
+  }
+
+  function bilanScrub(e){
+    if(!state.bilan.chart) return;
+    var rect = e.currentTarget.getBoundingClientRect();
+    var x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    state.bilan.curseur = Math.round(x * (state.bilan.chart.distance.length - 1));
+    redessinerBilan();
+  }
+  [bilanElevCanvas, bilanHrCanvas].forEach(function(c){
+    c.addEventListener("pointerdown", bilanScrub);
+    c.addEventListener("pointermove", bilanScrub);
+  });
+
+  async function openBilan(activity){
+    if(state.activity !== activity) state.recap = {loading:false, phrases:[], legende:"", error:null};
+    state.activity = activity;
+    state.bilan = {loading:!activity.demo, chart:null, curseur:null};
+    bilanTitle.textContent = activity.name;
+    buildBilanStats(activity, null);
+    dessinerRouteBilan(bilanRouteCanvas, activity, null, null);
+    bilanGraphBlock.hidden = true;
+    if(activity.demo){
+      bilanNoteEl.hidden = false;
+      bilanNoteEl.textContent = "Le détail seconde par seconde n'est disponible qu'avec un compte Strava connecté.";
+    } else {
+      bilanNoteEl.hidden = false;
+      bilanNoteEl.textContent = "Chargement du détail…";
+    }
+    showScreen("screen-bilan");
+    if(activity.demo) return;
+    try{
+      var r = await fetch("/api/activities/" + activity.id + "/graphique", {credentials:"same-origin"});
+      if(state.activity !== activity) return;
+      if(!r.ok){
+        state.bilan.loading = false;
+        bilanNoteEl.hidden = false;
+        bilanNoteEl.textContent = r.status === 404
+          ? "Pas de détail seconde par seconde pour cette sortie."
+          : "Le détail n'a pas pu être chargé.";
+        return;
+      }
+      var data = await r.json();
+      if(state.activity !== activity) return;
+      state.bilan.loading = false;
+      state.bilan.chart = data.chart;
+      bilanNoteEl.hidden = true;
+      bilanGraphBlock.hidden = false;
+      bilanHrWrap.hidden = !data.chart.heartrate;
+      buildBilanStats(activity, data.chart);
+      redessinerBilan();
+    }catch(e){
+      if(state.activity !== activity) return;
+      state.bilan.loading = false;
+      bilanNoteEl.hidden = false;
+      bilanNoteEl.textContent = "Le détail n'a pas pu être chargé.";
+    }
+  }
+
+  $("bilan-back").addEventListener("click", function(){ showScreen("screen-home"); });
+  $("bilan-story-btn").addEventListener("click", function(){ openStory(state.activity); });
 
   function openStory(activity){
     if(state.activity !== activity) state.recap = {loading:false, phrases:[], legende:"", error:null};
