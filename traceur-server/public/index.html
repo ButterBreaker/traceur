@@ -298,14 +298,110 @@
   }
   body{margin:0;}
   .logout-btn{background:none;border:none;color:var(--text-dim);font-family:inherit;font-size:12px;cursor:pointer;margin-left:4px;text-decoration:underline;}
+
+  /* ---------- splash ---------- */
+  #screen-splash{align-items:center;justify-content:center;}
+  #screen-splash .brand{opacity:.9;animation:pulse 1.4s ease-in-out infinite;}
+
+  /* ---------- page de connexion ---------- */
+  #screen-login{padding-top:calc(env(safe-area-inset-top,0px) + 22px);}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px;letter-spacing:.2px;}
+  .brand svg{flex:none;}
+  .login-hero{
+    position:relative;
+    display:flex;justify-content:center;
+    margin:18px 0 4px;
+    padding:8px 0 12px;
+  }
+  .login-hero::before{
+    content:"";position:absolute;left:50%;top:48%;
+    width:240px;height:240px;transform:translate(-50%,-50%);
+    background:radial-gradient(circle, rgba(255,106,46,.35), rgba(255,178,44,.08) 55%, transparent 70%);
+    filter:blur(10px);
+  }
+  .login-hero .phone-frame{
+    width:min(44vw,180px);
+    margin:0;
+    border-radius:24px;
+    border-width:5px;
+    transform:rotate(-4deg);
+    box-shadow:0 30px 60px -25px rgba(0,0,0,.85);
+  }
+  .login-title{
+    font-size:clamp(25px,7vw,32px);
+    line-height:1.12;
+    font-weight:800;
+    margin:14px 0 10px;
+    text-wrap:balance;
+    letter-spacing:-.3px;
+  }
+  .login-title em{font-style:normal;background:linear-gradient(90deg,var(--accent),var(--accent-2));-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .login-sub{font-size:14px;line-height:1.55;color:var(--text-dim);margin:0 0 18px;max-width:36ch;}
+  .steps{display:flex;gap:6px;margin:0 0 22px;flex-wrap:wrap;}
+  .step{
+    display:flex;align-items:center;gap:7px;
+    font-size:11.5px;color:var(--text);white-space:nowrap;
+    background:var(--surface);border:1px solid var(--line);
+    padding:6px 10px 6px 6px;border-radius:999px;
+  }
+  .step b{
+    width:18px;height:18px;border-radius:50%;
+    background:var(--surface-2);color:var(--accent-2);
+    display:flex;align-items:center;justify-content:center;
+    font-size:10.5px;
+  }
+  .strava-btn{
+    width:100%;
+    background:#FC5200;color:#fff;
+    margin-top:auto;
+  }
+  .strava-btn:hover{filter:brightness(1.06);}
+  .strava-btn:disabled{opacity:.7;cursor:default;}
+  .demo-link{
+    background:none;border:none;
+    color:var(--text-dim);
+    font-family:inherit;font-size:13px;font-weight:600;
+    padding:14px;margin-top:4px;cursor:pointer;
+    text-decoration:underline;text-underline-offset:3px;
+  }
+  .demo-link:hover{color:var(--text);}
+  .login-foot{
+    font-size:11px;color:#6f6c72;text-align:center;line-height:1.5;
+    margin:6px 0 0;
+  }
+  .btn:focus-visible,.demo-link:focus-visible,.back-btn:focus-visible{outline:2px solid var(--accent-2);outline-offset:2px;}
+  @media (prefers-reduced-motion: reduce){ #screen-splash .brand,.dot.busy{animation:none;} }
 </style>
 </head>
 <body>
 
 <div id="app">
 
+  <!-- ===== CHARGEMENT ===== -->
+  <div class="screen active" id="screen-splash">
+    <div class="brand"><svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><rect width="26" height="26" rx="8" fill="#19181b"/><path d="M6 18c2-6 5 1 7-5s4-4 7-6" fill="none" stroke="#ff8a2e" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="18" r="1.8" fill="#fff"/><circle cx="20" cy="7" r="2" fill="#ff6a2e"/></svg>Traceur</div>
+  </div>
+
+  <!-- ===== PAGE DE CONNEXION ===== -->
+  <div class="screen" id="screen-login">
+    <div class="brand"><svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><rect width="26" height="26" rx="8" fill="#19181b"/><path d="M6 18c2-6 5 1 7-5s4-4 7-6" fill="none" stroke="#ff8a2e" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="18" r="1.8" fill="#fff"/><circle cx="20" cy="7" r="2" fill="#ff6a2e"/></svg>Traceur</div>
+    <div class="login-hero">
+      <div class="phone-frame"><canvas id="login-canvas" width="1080" height="1920"></canvas></div>
+    </div>
+    <h2 class="login-title">Tes sorties Strava,<br><em>en stories prêtes à poster.</em></h2>
+    <p class="login-sub">Connecte ton compte, choisis une sortie : Traceur dessine ton tracé et tes stats au format Instagram.</p>
+    <div class="steps">
+      <div class="step"><b>1</b>Connecte Strava</div>
+      <div class="step"><b>2</b>Choisis une sortie</div>
+      <div class="step"><b>3</b>Partage</div>
+    </div>
+    <button class="btn strava-btn" id="login-btn">Se connecter avec Strava</button>
+    <button class="demo-link" id="demo-btn">Voir un exemple sans compte</button>
+    <p class="login-foot">Accès en lecture seule à tes activités. Rien n'est publié sans toi.</p>
+  </div>
+
   <!-- ===== ÉCRAN 1 : liste des activités ===== -->
-  <div class="screen active" id="screen-home">
+  <div class="screen" id="screen-home">
     <div class="topbar">
       <h1>Traceur</h1>
       <div class="account-chip" id="account-chip">
@@ -315,7 +411,7 @@
     </div>
 
     <div class="connect-panel" id="connect-panel">
-      <p><b>Connecte ton compte Strava</b> pour générer des stories à partir de tes vraies sorties — sinon l'appli tourne avec 4 exemples.</p>
+      <p><b>Mode exemple.</b> Connecte ton compte pour générer des stories à partir de tes vraies sorties.</p>
       <button class="btn btn-primary" id="connect-btn" style="margin-top:2px;">Se connecter avec Strava</button>
     </div>
 
@@ -671,11 +767,15 @@
     return coords;
   }
 
+  function showScreen(id){
+    document.querySelectorAll(".screen").forEach(function(el){ el.classList.toggle("active", el.id === id); });
+    window.scrollTo(0,0);
+  }
+
   async function openStory(activity){
     state.activity = activity;
     storyTitle.textContent = activity.name;
-    screenHome.classList.remove("active");
-    screenStory.classList.add("active");
+    showScreen("screen-story");
     buildSwatches();
     hideOverlay();
     if(document.fonts && document.fonts.ready){ await document.fonts.ready; }
@@ -683,10 +783,7 @@
     window.scrollTo(0,0);
   }
 
-  document.getElementById("back-btn").addEventListener("click", function(){
-    screenStory.classList.remove("active");
-    screenHome.classList.add("active");
-  });
+  document.getElementById("back-btn").addEventListener("click", function(){ showScreen("screen-home"); });
 
   document.getElementById("regen-btn").addEventListener("click", function(){
     draw();
@@ -724,7 +821,7 @@
 
   async function loadActivities(){
     var r = await fetch("/api/activities", {credentials:"same-origin"});
-    if(r.status === 401){ state.connectStatus = "idle"; state.activities = DEMO_ACTIVITIES.slice(); buildList(); setAccountUI(); toast("Session expirée — reconnecte-toi"); return; }
+    if(r.status === 401){ state.connectStatus = "idle"; state.activities = DEMO_ACTIVITIES.slice(); buildList(); setAccountUI(); showLogin(); toast("Session expirée — reconnecte-toi"); return; }
     if(r.status === 429){ toast("Trop de requêtes Strava, réessaie dans 15 min"); return; }
     if(!r.ok){ toast("Strava ne répond pas pour le moment"); return; }
     var data = await r.json();
@@ -742,24 +839,48 @@
     buildList();
   }
 
+  var loginBtn = document.getElementById("login-btn");
+  var loginCanvas = document.getElementById("login-canvas");
+
+  async function showLogin(){
+    loginBtn.disabled = false;
+    loginBtn.textContent = "Se connecter avec Strava";
+    showScreen("screen-login");
+    if(document.fonts && document.fonts.ready){ try{ await document.fonts.ready; }catch(e){} }
+    renderStory(loginCanvas, DEMO_ACTIVITIES[0], PALETTES[0]);
+  }
+
+  function goStrava(){
+    loginBtn.disabled = true;
+    loginBtn.textContent = "Redirection vers Strava…";
+    state.connectStatus = "connecting"; setAccountUI();
+    location.href = "/auth/strava";
+  }
+
   async function init(){
     var params = new URLSearchParams(location.search);
     var err = params.get("erreur");
-    if(err){ toast(ERREURS[err] || "Connexion impossible"); history.replaceState(null, "", "/"); }
-    try{
-      var me = await (await fetch("/api/me", {credentials:"same-origin"})).json();
-      if(me.connected){
-        state.athleteName = me.firstname || "Athlète";
-        state.connectStatus = "connected";
-        setAccountUI();
-        await loadActivities();
-      }
-    }catch(e){ /* hors-ligne : on reste sur les exemples */ }
+    if(err){ history.replaceState(null, "", "/"); }
+    var me = {connected:false};
+    try{ me = await (await fetch("/api/me", {credentials:"same-origin"})).json(); }catch(e){}
+    if(me.connected){
+      state.athleteName = me.firstname || "Athlète";
+      state.connectStatus = "connected";
+      setAccountUI();
+      showScreen("screen-home");
+      await loadActivities();
+    } else {
+      await showLogin();
+      if(err){ toast(ERREURS[err] || "Connexion impossible"); }
+    }
   }
 
-  connectBtn.addEventListener("click", function(){
-    state.connectStatus = "connecting"; setAccountUI();
-    location.href = "/auth/strava";
+  loginBtn.addEventListener("click", goStrava);
+  connectBtn.addEventListener("click", goStrava);
+  document.getElementById("demo-btn").addEventListener("click", function(){
+    state.activities = DEMO_ACTIVITIES.slice();
+    buildList(); setAccountUI();
+    showScreen("screen-home");
   });
   refreshBtn.addEventListener("click", function(){
     loadActivities().then(function(){ toast("Sorties actualisées"); });
@@ -768,7 +889,9 @@
     await fetch("/auth/logout", {method:"POST", credentials:"same-origin"});
     state.connectStatus = "idle"; state.athleteName = null;
     state.activities = DEMO_ACTIVITIES.slice();
-    buildList(); setAccountUI(); toast("Déconnecté");
+    buildList(); setAccountUI();
+    await showLogin();
+    toast("Déconnecté");
   });
 
   buildList();
