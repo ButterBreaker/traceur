@@ -8,7 +8,7 @@
 <meta name="description" content="Prototype d'appli qui transforme tes sorties Strava en stories Instagram automatiquement.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Oswald:wght@500;700&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
 <style>
   :root{
@@ -371,6 +371,80 @@
   }
   .btn:focus-visible,.demo-link:focus-visible,.back-btn:focus-visible{outline:2px solid var(--accent-2);outline-offset:2px;}
   @media (prefers-reduced-motion: reduce){ #screen-splash .brand,.dot.busy{animation:none;} }
+  [hidden]{display:none!important;}
+
+  /* ---------- éditeur ---------- */
+  .topbar-actions{margin-left:auto;display:flex;gap:8px;}
+  .icon-btn{
+    width:34px;height:34px;border-radius:10px;border:1px solid var(--line);
+    background:var(--surface);color:var(--text);font-size:17px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;font-family:inherit;
+  }
+  .icon-btn:disabled{opacity:.35;cursor:default;}
+  .editor-stage{display:flex;flex-direction:column;align-items:center;}
+  .editor-frame{width:min(74vw,320px);margin:2px auto 0;touch-action:none;cursor:grab;}
+  .editor-frame canvas{touch-action:none;}
+  .stage-hint{font-size:11px;color:var(--text-dim);text-align:center;margin:10px 0 0;max-width:36ch;line-height:1.45;}
+
+  .inspector{
+    background:var(--surface);border:1px solid var(--line);border-radius:16px;
+    padding:14px;margin-top:12px;display:flex;flex-direction:column;gap:14px;
+  }
+  .insp-head{display:flex;align-items:center;justify-content:space-between;font-weight:700;font-size:14.5px;}
+  .insp-head button{background:var(--surface-2);border:1px solid var(--line);color:var(--text-dim);width:28px;height:28px;border-radius:8px;cursor:pointer;font-size:13px;}
+  .ctrl{display:flex;flex-direction:column;gap:8px;}
+  .ctrl-label{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-dim);font-weight:600;display:flex;justify-content:space-between;gap:8px;}
+  .ctrl-label b{color:var(--text);font-weight:600;letter-spacing:0;font-variant-numeric:tabular-nums;}
+  input[type=range]{width:100%;accent-color:var(--accent);margin:0;}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  .chip-color{width:30px;height:30px;border-radius:50%;border:2px solid var(--line);cursor:pointer;padding:0;flex:none;}
+  .chip-color.on{border-color:var(--text);box-shadow:inset 0 0 0 2px var(--bg);}
+  .color-input{width:30px;height:30px;border:none;padding:0;background:none;cursor:pointer;flex:none;}
+  .color-input::-webkit-color-swatch-wrapper{padding:0;}
+  .color-input::-webkit-color-swatch{border:2px dashed var(--text-dim);border-radius:50%;}
+  .color-input::-moz-color-swatch{border:2px dashed var(--text-dim);border-radius:50%;}
+  .seg{display:flex;background:var(--surface-2);border-radius:10px;padding:3px;gap:3px;}
+  .seg button{flex:1;border:none;background:none;color:var(--text-dim);font-family:inherit;font-size:12px;font-weight:600;padding:8px 6px;border-radius:8px;cursor:pointer;white-space:nowrap;}
+  .seg button.on{background:var(--bg);color:var(--text);}
+  .toggle-row{display:flex;align-items:center;justify-content:space-between;font-size:13px;gap:10px;}
+  input.sw{appearance:none;-webkit-appearance:none;width:40px;height:24px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);position:relative;cursor:pointer;flex:none;margin:0;transition:background .15s;}
+  input.sw::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:var(--text-dim);transition:transform .15s,background .15s;}
+  input.sw:checked{background:var(--accent);border-color:var(--accent);}
+  input.sw:checked::after{transform:translateX(16px);background:#fff;}
+  .actions{display:flex;gap:8px;flex-wrap:wrap;}
+  .mini-btn{flex:1;min-width:0;border:1px solid var(--line);background:var(--surface-2);color:var(--text);font-family:inherit;font-size:12px;font-weight:600;padding:9px 8px;border-radius:10px;cursor:pointer;white-space:nowrap;}
+  .mini-btn:hover{border-color:var(--text-dim);}
+  .mini-btn.danger{color:var(--danger);}
+  .text-input{width:100%;background:var(--surface-2);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:10px 12px;font-family:inherit;font-size:14px;}
+
+  .tabs{display:flex;gap:4px;margin-top:14px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:4px;}
+  .tab{flex:1;border:none;background:none;color:var(--text-dim);font-family:inherit;font-weight:600;font-size:12.5px;padding:10px 4px;border-radius:10px;cursor:pointer;}
+  .tab.active{background:var(--surface-2);color:var(--text);}
+  .tab-panel{padding:16px 0 8px;display:flex;flex-direction:column;gap:14px;}
+  .panel-title{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);font-weight:600;margin:4px 0 -4px;}
+  .preset-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+  .preset-card{background:none;border:none;padding:0;cursor:pointer;color:var(--text);font-family:inherit;display:flex;flex-direction:column;gap:6px;}
+  .preset-card canvas{width:100%;aspect-ratio:9/16;border-radius:12px;border:2px solid var(--line);display:block;background:#000;}
+  .preset-card.on canvas{border-color:var(--accent);}
+  .preset-card span{font-size:11.5px;font-weight:600;text-align:center;}
+  .el-list{display:flex;flex-direction:column;gap:8px;}
+  .el-row{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:9px 10px 9px 12px;font-size:13.5px;}
+  .el-row.sel{border-color:var(--accent);}
+  .el-row.na{opacity:.45;}
+  .el-name{flex:1;min-width:0;font-weight:600;}
+  .el-val{color:var(--text-dim);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:38%;}
+  .el-edit{background:none;border:1px solid var(--line);color:var(--accent-2);font-family:inherit;font-size:11.5px;font-weight:700;padding:6px 9px;border-radius:8px;cursor:pointer;}
+  .photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+  .photo-item{display:flex;flex-direction:column;gap:5px;}
+  .photo-item img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:12px;border:1px solid var(--line);display:block;}
+  .photo-item .mini-btn{font-size:10.5px;padding:7px 4px;flex:none;width:100%;}
+  .add-photo{border:1.5px dashed var(--line);background:var(--surface);color:var(--text);border-radius:14px;padding:18px;font-family:inherit;font-weight:700;font-size:14px;cursor:pointer;}
+  .add-photo:hover{border-color:var(--accent);}
+  .note{font-size:11.5px;color:var(--text-dim);line-height:1.5;margin:0;}
+  .font-chip{font-size:15px !important;}
+  .save-bar{position:sticky;bottom:0;padding:12px 0 calc(env(safe-area-inset-bottom,0px) + 12px);background:linear-gradient(rgba(14,14,16,0), var(--bg) 35%);margin-top:auto;z-index:4;}
+  .save-bar .btn{width:100%;margin-top:0;}
+  #screen-story{padding-bottom:0;}
 </style>
 </head>
 <body>
@@ -427,38 +501,45 @@
     <div class="empty-note">Touche une sortie pour générer sa story.</div>
   </div>
 
-  <!-- ===== ÉCRAN 2 : aperçu / édition de la story ===== -->
+  <!-- ===== ÉCRAN 2 : éditeur de story ===== -->
   <div class="screen" id="screen-story">
     <div class="topbar">
-      <button class="back-btn" id="back-btn">←</button>
+      <button class="back-btn" id="back-btn" aria-label="Retour aux sorties">←</button>
       <h1 id="story-title">Story</h1>
+      <div class="topbar-actions">
+        <button class="icon-btn" id="undo-btn" aria-label="Annuler la dernière modification" title="Annuler" disabled>↺</button>
+      </div>
     </div>
 
-    <div class="phone-frame">
-      <canvas id="story-canvas" width="1080" height="1920"></canvas>
-      <div class="canvas-overlay" id="canvas-overlay">Chargement du tracé…</div>
+    <div class="editor-stage">
+      <div class="phone-frame editor-frame"><canvas id="edit-canvas" width="1080" height="1920"></canvas></div>
+      <p class="stage-hint">Touche un élément pour le modifier · glisse pour le déplacer · pince ou tire la poignée ◢ pour l'agrandir</p>
     </div>
 
-    <div class="section-label" style="text-align:center;">Couleur</div>
-    <div class="swatches" id="swatches"></div>
+    <div class="inspector" id="inspector" hidden></div>
 
-    <button class="btn btn-primary" id="save-btn">⭳ Enregistrer / partager</button>
-    <button class="btn btn-ghost" id="regen-btn">Regénérer l'aperçu</button>
+    <div class="tabs" role="tablist">
+      <button class="tab active" data-tab="presets" role="tab">Modèles</button>
+      <button class="tab" data-tab="elements" role="tab">Éléments</button>
+      <button class="tab" data-tab="photos" role="tab">Photos</button>
+      <button class="tab" data-tab="style" role="tab">Style</button>
+    </div>
+    <div class="tab-panel" id="tab-panel"></div>
+
+    <div class="save-bar"><button class="btn btn-primary" id="save-btn">Enregistrer / partager</button></div>
   </div>
 
 </div>
 
-<div class="toast" id="toast"></div>
+<input type="file" id="photo-input" accept="image/*" multiple hidden>
+<div class="toast" id="toast" role="status"></div>
 
 <script>
 (function(){
   "use strict";
+  var W = 1080, H = 1920;
 
-
-  // ---------------------------------------------------------------
-  // Données d'exemple (hors-ligne) — vraies traces GPS de Mazéo,
-  // utilisées tant qu'aucun compte Strava n'est connecté à la page.
-  // ---------------------------------------------------------------
+  // Exemples (hors connexion) — vraies traces GPS
   var DEMO_ACTIVITIES = [
     {
       id:"demo-1", name:"Afternoon Run", sport:"Run", demo:true,
@@ -486,273 +567,57 @@
     }
   ];
 
-  var SPORT_LABEL = {Run:"COURSE À PIED", TrailRun:"TRAIL", Ride:"VÉLO", Workout:"SÉANCE", Hike:"RANDONNÉE", Walk:"MARCHE"};
-  var SPORT_ICON  = {Run:"🏃", TrailRun:"⛰️", Ride:"🚴", Workout:"🏋️", Hike:"🥾", Walk:"🚶"};
+  var SPORT_LABEL = {Run:"COURSE À PIED", TrailRun:"TRAIL", Ride:"VÉLO", Workout:"SÉANCE", Hike:"RANDONNÉE", Walk:"MARCHE", GravelRide:"GRAVEL", MountainBikeRide:"VTT"};
+  var SPORT_ICON  = {Run:"🏃", TrailRun:"⛰️", Ride:"🚴", Workout:"🏋️", Hike:"🥾", Walk:"🚶", GravelRide:"🚴", MountainBikeRide:"🚵"};
   var MONTHS_FR = ["janv.","févr.","mars","avr.","mai","juin","juil.","août","sept.","oct.","nov.","déc."];
 
   var PALETTES = [
-    {name:"Ambre",  a:"#ff6a2e", b:"#ffb22c"},
-    {name:"Lagon",  a:"#12c2c2", b:"#7bf1a8"},
-    {name:"Violet", a:"#8b5cf6", b:"#f472b6"}
+    {name:"Ambre",   a:"#ff6a2e", b:"#ffb22c"},
+    {name:"Lagon",   a:"#12c2c2", b:"#7bf1a8"},
+    {name:"Violet",  a:"#8b5cf6", b:"#f472b6"},
+    {name:"Rouge",   a:"#e11d48", b:"#fb7185"},
+    {name:"Glacier", a:"#3b82f6", b:"#93c5fd"},
+    {name:"Neige",   a:"#ffffff", b:"#d6d6d6"}
   ];
 
-  var state = {
-    activity:null,
-    paletteIndex:0,
-    activities: DEMO_ACTIVITIES.slice(),
-    connectStatus:"idle",     // idle | connecting | connected | error | unavailable
-    athleteName:null
+  var FONTS = {
+    "Poppins":    {label:"Poppins", w:{value:800, title:800, text:500, label:600}},
+    "Bebas Neue": {label:"Bebas",   w:{value:400, title:400, text:400, label:400}},
+    "Anton":      {label:"Anton",   w:{value:400, title:400, text:400, label:400}},
+    "Oswald":     {label:"Oswald",  w:{value:700, title:700, text:500, label:500}}
   };
 
   // ---------------------------------------------------------------
-  // Formatting helpers
+  // Formats
   // ---------------------------------------------------------------
-  function fmtPace(distanceM, movingS, sport){
-    if(!distanceM || !movingS) return null;
-    if(sport === "Ride"){
-      var kmh = (distanceM/1000) / (movingS/3600);
-      return kmh.toFixed(1) + " km/h";
-    }
-    var secPerKm = movingS / (distanceM/1000);
-    var m = Math.floor(secPerKm/60), s = Math.round(secPerKm%60);
-    if(s === 60){m++; s=0;}
-    return m + ":" + String(s).padStart(2,"0") + " /km";
-  }
+  function pad(n){ return String(n).padStart(2,"0"); }
   function fmtTime(seconds){
     seconds = seconds || 0;
-    var h = Math.floor(seconds/3600), rem = seconds%3600;
-    var m = Math.floor(rem/60), s = Math.round(rem%60);
-    if(h) return h + "h" + String(m).padStart(2,"0");
-    return m + "min" + String(s).padStart(2,"0");
+    var h = Math.floor(seconds/3600), m = Math.floor(seconds%3600/60), s = Math.round(seconds%60);
+    return h ? h + "h" + pad(m) : m + "min" + pad(s);
   }
-  function fmtDateFR(isoLocal){
-    if(!isoLocal) return "";
-    var d = new Date(isoLocal);
+  function fmtClock(sec){
+    sec = Math.round(sec || 0);
+    var h = Math.floor(sec/3600), m = Math.floor(sec%3600/60), s = sec%60;
+    return (h ? h + ":" + pad(m) : m) + ":" + pad(s);
+  }
+  function paceParts(a){
+    if(!a.distance_m || !a.moving_time_s) return null;
+    var spk = a.moving_time_s / (a.distance_m/1000);
+    var m = Math.floor(spk/60), s = Math.round(spk%60);
+    if(s === 60){ m++; s = 0; }
+    return [m + ":" + pad(s), "/km"];
+  }
+  function fmtPace(a){
+    if(a.sport && /Ride/.test(a.sport)){ var sp = STATS.speed.get(a); return sp ? sp.join(" ") : null; }
+    var p = paceParts(a); return p ? p.join(" ") : null;
+  }
+  function fmtDateFR(iso){
+    if(!iso) return "";
+    var d = new Date(iso);
     if(isNaN(d.getTime())) return "";
     return d.getDate() + " " + MONTHS_FR[d.getMonth()] + " " + d.getFullYear();
   }
-
-  // ---------------------------------------------------------------
-  // Rendu de la story sur canvas 1080x1920
-  // ---------------------------------------------------------------
-  function projectRoute(points, box){
-    var lats = points.map(function(p){return p[0];});
-    var lons = points.map(function(p){return p[1];});
-    var latMin=Math.min.apply(null,lats), latMax=Math.max.apply(null,lats);
-    var lonMin=Math.min.apply(null,lons), lonMax=Math.max.apply(null,lons);
-    var latSpan = Math.max(latMax-latMin, 1e-6);
-    var lonSpan = Math.max(lonMax-lonMin, 1e-6);
-    var bw = box.x1-box.x0, bh = box.y1-box.y0;
-    var scale = Math.min(bw/lonSpan, bh/latSpan) * 0.85;
-    var cx = box.x0 + bw/2, cy = box.y0 + bh/2;
-    var lonC = (lonMin+lonMax)/2, latC=(latMin+latMax)/2;
-    return points.map(function(p){
-      return [ cx + (p[1]-lonC)*scale, cy - (p[0]-latC)*scale ];
-    });
-  }
-
-  function renderStory(canvas, activity, palette){
-    var ctx = canvas.getContext("2d");
-    var W = canvas.width, H = canvas.height;
-
-    var grad = ctx.createLinearGradient(0,0,0,H);
-    grad.addColorStop(0,"#121214");
-    grad.addColorStop(1,"#1b1a1d");
-    ctx.fillStyle = grad;
-    ctx.fillRect(0,0,W,H);
-
-    if(activity.route && activity.route.length > 1){
-      var box = {x0:90, y0:520, x1:W-90, y1:1280};
-      var pts = projectRoute(activity.route, box);
-
-      ctx.save();
-      ctx.strokeStyle = palette.a;
-      ctx.lineWidth = 22;
-      ctx.lineJoin = "round"; ctx.lineCap="round";
-      ctx.shadowColor = palette.a;
-      ctx.shadowBlur = 40;
-      ctx.globalAlpha = 0.55;
-      ctx.beginPath();
-      pts.forEach(function(p,i){ i===0?ctx.moveTo(p[0],p[1]):ctx.lineTo(p[0],p[1]); });
-      ctx.stroke();
-      ctx.restore();
-
-      ctx.save();
-      ctx.strokeStyle = palette.b;
-      ctx.lineWidth = 7;
-      ctx.lineJoin = "round"; ctx.lineCap="round";
-      ctx.beginPath();
-      pts.forEach(function(p,i){ i===0?ctx.moveTo(p[0],p[1]):ctx.lineTo(p[0],p[1]); });
-      ctx.stroke();
-      ctx.restore();
-
-      ctx.fillStyle="#ffffff";
-      ctx.beginPath(); ctx.arc(pts[0][0],pts[0][1],12,0,Math.PI*2); ctx.fill();
-      ctx.fillStyle=palette.a;
-      ctx.beginPath(); ctx.arc(pts[pts.length-1][0],pts[pts.length-1][1],14,0,Math.PI*2); ctx.fill();
-    }
-
-    ctx.fillStyle = palette.b;
-    ctx.font = "600 34px Poppins";
-    ctx.textBaseline = "top";
-    ctx.fillText(SPORT_LABEL[activity.sport] || (activity.sport||"").toUpperCase(), 90, 108);
-
-    ctx.fillStyle = "#96939a";
-    ctx.font = "400 28px Poppins";
-    ctx.fillText(activity.location + "  ·  " + activity.date, 90, 156);
-
-    ctx.fillStyle = "#f4f2f0";
-    ctx.font = "800 72px Poppins";
-    var words = activity.name.toUpperCase().split(" ");
-    var line1, line2 = "";
-    if(words.length > 2){
-      var mid = Math.ceil(words.length/2);
-      line1 = words.slice(0,mid).join(" ");
-      line2 = words.slice(mid).join(" ");
-    } else {
-      line1 = words.join(" ");
-    }
-    ctx.fillText(line1, 90, 216);
-    if(line2) ctx.fillText(line2, 90, 296);
-
-    ctx.strokeStyle = "rgba(255,255,255,.14)";
-    ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(90,1392); ctx.lineTo(W-90,1392); ctx.stroke();
-
-    var stats = [
-      ["DISTANCE", (activity.distance_m/1000).toFixed(2) + " km"],
-      ["TEMPS", fmtTime(activity.moving_time_s)]
-    ];
-    var pace = fmtPace(activity.distance_m, activity.moving_time_s, activity.sport);
-    if(pace) stats.push(["ALLURE", pace]);
-    if(activity.elevation_gain_m != null) stats.push(["D+", Math.round(activity.elevation_gain_m) + " m"]);
-    if(activity.calories) stats.push(["CALORIES", String(Math.round(activity.calories))]);
-
-    var padX=90, colW=(W-2*padX)/2, boxY0=1428, rowH=128;
-    stats.forEach(function(s,i){
-      var col = i%2, row = Math.floor(i/2);
-      var x = padX + col*colW, y = boxY0 + row*rowH;
-      ctx.fillStyle="#96939a";
-      ctx.font="500 26px Poppins";
-      ctx.fillText(s[0], x, y);
-      ctx.fillStyle="#f4f2f0";
-      ctx.font="800 50px Poppins";
-      ctx.fillText(s[1], x, y+32);
-    });
-
-    ctx.fillStyle="#6f6c72";
-    ctx.font="400 24px Poppins";
-    ctx.fillText("GÉNÉRÉ AUTOMATIQUEMENT · TRACEUR", 90, H-90);
-  }
-
-  // ---------------------------------------------------------------
-  // UI wiring
-  // ---------------------------------------------------------------
-  var listEl = document.getElementById("activity-list");
-  var screenHome = document.getElementById("screen-home");
-  var screenStory = document.getElementById("screen-story");
-  var canvas = document.getElementById("story-canvas");
-  var canvasOverlay = document.getElementById("canvas-overlay");
-  var storyTitle = document.getElementById("story-title");
-  var swatchesEl = document.getElementById("swatches");
-  var toastEl = document.getElementById("toast");
-  var accountDot = document.getElementById("account-dot");
-  var accountLabel = document.getElementById("account-label");
-  var connectPanel = document.getElementById("connect-panel");
-  var connectBtn = document.getElementById("connect-btn");
-  var connectedRow = document.getElementById("connected-row");
-  var connectedLabel = document.getElementById("connected-label");
-  var refreshBtn = document.getElementById("refresh-btn");
-
-  function toast(msg){
-    toastEl.textContent = msg;
-    toastEl.classList.add("show");
-    clearTimeout(toast._t);
-    toast._t = setTimeout(function(){ toastEl.classList.remove("show"); }, 3200);
-  }
-
-  function setAccountUI(){
-    if(state.connectStatus === "connected"){
-      accountDot.className = "dot ok";
-      accountLabel.textContent = "Strava · " + (state.athleteName || "Connecté");
-      connectPanel.style.display = "none";
-      connectedRow.style.display = "flex";
-      connectedLabel.textContent = "Connecté · " + (state.athleteName || "Strava");
-    } else if(state.connectStatus === "connecting"){
-      accountDot.className = "dot busy";
-      accountLabel.textContent = "Connexion…";
-      connectPanel.style.display = "flex";
-      connectedRow.style.display = "none";
-      connectBtn.disabled = true;
-      connectBtn.textContent = "Connexion…";
-    } else {
-      accountDot.className = state.connectStatus === "error" ? "dot warn" : "dot";
-      accountLabel.textContent = "Hors-ligne";
-      connectPanel.style.display = "flex";
-      connectedRow.style.display = "none";
-      connectBtn.disabled = false;
-      connectBtn.textContent = "Se connecter avec Strava";
-    }
-  }
-
-  function buildList(){
-    listEl.innerHTML = "";
-    state.activities.forEach(function(a){
-      var card = document.createElement("div");
-      card.className = "activity-card";
-      var pace = fmtPace(a.distance_m, a.moving_time_s, a.sport);
-      card.innerHTML =
-                '<div class="ac-top">'+
-          '<div class="ac-icon">'+(SPORT_ICON[a.sport]||"🏅")+'</div>'+
-          '<div>'+
-            '<div class="ac-title">'+a.name+'</div>'+
-            '<div class="ac-sub">'+(a.demo ? '<span class="demo-pill">Exemple</span> ' : '')+[a.location,a.date].filter(Boolean).join(' · ')+'</div>'+
-          '</div>'+
-          '<div class="ac-cta">Générer →</div>'+
-        '</div>'+
-        '<div class="ac-stats">'+
-          '<div class="ac-stat"><b>'+(a.distance_m/1000).toFixed(2)+' km</b><span>Distance</span></div>'+
-          '<div class="ac-stat"><b>'+fmtTime(a.moving_time_s)+'</b><span>Temps</span></div>'+
-          (pace ? '<div class="ac-stat"><b>'+pace+'</b><span>Allure</span></div>' : '')+
-        '</div>';
-      card.addEventListener("click", function(){ openStory(a); });
-      listEl.appendChild(card);
-    });
-  }
-
-  function buildSwatches(){
-    swatchesEl.innerHTML = "";
-    PALETTES.forEach(function(p, i){
-      var el = document.createElement("div");
-      el.className = "swatch" + (i===state.paletteIndex ? " selected" : "");
-      el.style.background = "linear-gradient(135deg,"+p.a+","+p.b+")";
-      el.title = p.name;
-      el.addEventListener("click", function(){
-        state.paletteIndex = i;
-        buildSwatches();
-        draw();
-      });
-      swatchesEl.appendChild(el);
-    });
-  }
-
-  function draw(){
-    if(!state.activity) return;
-    renderStory(canvas, state.activity, PALETTES[state.paletteIndex]);
-  }
-
-  function showOverlay(msg){
-    canvasOverlay.textContent = msg;
-    canvasOverlay.classList.add("show");
-  }
-  function hideOverlay(){
-    canvasOverlay.classList.remove("show");
-  }
-
-
-  // ---------------------------------------------------------------
-  // Décodage polyline (format Google, utilisé par Strava)
-  // ---------------------------------------------------------------
   function decodePolyline(str){
     var index=0, lat=0, lng=0, coords=[];
     while(index < str.length){
@@ -767,42 +632,1027 @@
     return coords;
   }
 
+  // ---------------------------------------------------------------
+  // Éléments disponibles
+  // ---------------------------------------------------------------
+  var STATS = {
+    distance:  {name:"Distance",       label:"DISTANCE", get:function(a){ return a.distance_m ? [(a.distance_m/1000).toFixed(2), "km"] : null; }},
+    time:      {name:"Temps",          label:"TEMPS",    get:function(a){ return a.moving_time_s ? [fmtClock(a.moving_time_s), ""] : null; }},
+    pace:      {name:"Allure",         label:"ALLURE",   get:paceParts},
+    elevation: {name:"Dénivelé",       label:"D+",       get:function(a){ return a.elevation_gain_m != null ? [String(Math.round(a.elevation_gain_m)), "m"] : null; }},
+    calories:  {name:"Calories",       label:"CALORIES", get:function(a){ return a.calories ? [String(Math.round(a.calories)), "kcal"] : null; }},
+    speed:     {name:"Vitesse moyenne",label:"VITESSE",  get:function(a){ return a.distance_m && a.moving_time_s ? [((a.distance_m/1000)/(a.moving_time_s/3600)).toFixed(1), "km/h"] : null; }}
+  };
+  var STAT_ORDER = ["distance","time","pace","elevation","calories","speed"];
+
+  var TEXTS = {
+    title:  {name:"Titre",       get:function(a){ return a.name; }},
+    sport:  {name:"Sport",       get:function(a){ return SPORT_LABEL[a.sport] || String(a.sport||"").toUpperCase(); }},
+    meta:   {name:"Lieu & date", get:function(a){ return [a.location, a.date].filter(Boolean).join("  ·  "); }},
+    brand:  {name:"Signature",   get:function(){ return "TRACEUR"; }},
+    custom: {name:"Texte libre", get:function(a, l){ return l.text || ""; }}
+  };
+  var TEXT_ORDER = ["title","sport","meta","brand"];
+  var TEXT_DEFAULTS = {
+    title:  {size:72, role:"title", upper:true},
+    sport:  {size:34, role:"label", color:"accent2", upper:true},
+    meta:   {size:28, role:"text",  color:"dim"},
+    brand:  {size:24, role:"label", color:"dim", upper:true},
+    custom: {size:60, role:"title", upper:false, text:"Mon texte"}
+  };
+
+  // ---------------------------------------------------------------
+  // État
+  // ---------------------------------------------------------------
+  var state = {
+    activities: DEMO_ACTIVITIES.slice(),
+    activity: null,
+    connectStatus: "idle",
+    athleteName: null,
+    design: null,
+    presetId: "classique",
+    pendingPhotoPreset: null,
+    selectedId: null,
+    photos: [],
+    history: [],
+    guides: null,
+    tab: "presets"
+  };
+  var uid = 0;
+  function nid(p){ return p + "-" + Date.now().toString(36) + "-" + (++uid); }
+
+  function textLayer(key, o){
+    return Object.assign({id:nid("t"), kind:"text", key:key, x:90, y:200, scale:1, visible:true, size:48, role:"text", color:"text", align:"left", upper:false, shadow:false}, TEXT_DEFAULTS[key] || {}, o || {});
+  }
+  function statLayer(key, o){
+    return Object.assign({id:nid("s"), kind:"stat", key:key, x:90, y:1400, scale:1, visible:true, size:50, color:"text", labelColor:"dim", align:"left", showLabel:true, shadow:false}, o || {});
+  }
+  function routeLayer(o){
+    return Object.assign({id:nid("r"), kind:"route", key:"route", x:540, y:900, w:900, h:760, scale:1, visible:true, color:"accent2", glow:true, width:7, dots:true}, o || {});
+  }
+  function photoLayer(photoId, o){
+    return Object.assign({id:nid("p"), kind:"photo", key:photoId, photoId:photoId, x:540, y:820, w:760, h:960, scale:1, visible:true, radius:32, opacity:1, border:false}, o || {});
+  }
+
+  function currentPalette(){
+    return state.design ? {a:state.design.palette.a, b:state.design.palette.b} : {a:PALETTES[0].a, b:PALETTES[0].b};
+  }
+  function baseDesign(o){
+    var d = Object.assign({
+      bg:{type:"gradient", color:"#121214", color2:"#1d1b1f", photoId:null, dim:0.3, scrim:false},
+      font:"Poppins", textColor:"#f4f2f0", palette:currentPalette(), layers:[]
+    }, o || {});
+    d.bg = Object.assign({type:"gradient", color:"#121214", color2:"#1d1b1f", photoId:null, dim:0.3, scrim:false}, d.bg);
+    return d;
+  }
+  function ensureAll(d){
+    function has(kind, key){ return d.layers.some(function(l){ return l.kind === kind && l.key === key; }); }
+    TEXT_ORDER.forEach(function(k){ if(!has("text", k)) d.layers.push(textLayer(k, {visible:false, x:540, y:900, align:"center"})); });
+    if(!has("route", "route")) d.layers.push(routeLayer({visible:false}));
+    STAT_ORDER.forEach(function(k){ if(!has("stat", k)) d.layers.push(statLayer(k, {visible:false, x:540, y:960, align:"center"})); });
+    return d;
+  }
+  function firstPhotoId(){ return state.photos.length ? state.photos[0].id : null; }
+  function getPhoto(id){ for(var i=0;i<state.photos.length;i++){ if(state.photos[i].id === id) return state.photos[i]; } return null; }
+
+  // ---------------------------------------------------------------
+  // Modèles prêts à l'emploi
+  // ---------------------------------------------------------------
+  var PRESETS = [
+    {id:"classique", name:"Classique", make:function(){ return baseDesign({layers:[
+      textLayer("sport", {x:90, y:108}),
+      textLayer("meta",  {x:90, y:156}),
+      textLayer("title", {x:90, y:216}),
+      routeLayer({x:540, y:900, w:900, h:760}),
+      statLayer("distance",  {x:90,  y:1420}),
+      statLayer("time",      {x:585, y:1420}),
+      statLayer("pace",      {x:90,  y:1572}),
+      statLayer("elevation", {x:585, y:1572}),
+      statLayer("calories",  {x:90,  y:1724}),
+      textLayer("brand", {x:90, y:1840})
+    ]}); }},
+    {id:"minimal", name:"Minimal", make:function(){ return baseDesign({bg:{type:"solid", color:"#0b0b0c"}, layers:[
+      routeLayer({x:540, y:760, w:820, h:820, color:"accent", glow:false, width:8}),
+      statLayer("distance", {x:540, y:1300, align:"center", size:150, showLabel:false}),
+      statLayer("time", {x:330, y:1580, align:"center", size:52}),
+      statLayer("pace", {x:750, y:1580, align:"center", size:52}),
+      textLayer("brand", {x:540, y:1840, align:"center"})
+    ]}); }},
+    {id:"chiffres", name:"Gros chiffres", make:function(){ return baseDesign({font:"Bebas Neue", layers:[
+      textLayer("sport", {x:90, y:130, size:46}),
+      statLayer("distance",  {x:84, y:190, size:300, showLabel:false, color:"accent"}),
+      statLayer("time",      {x:90, y:560, size:120}),
+      statLayer("pace",      {x:90, y:790, size:120}),
+      statLayer("elevation", {x:90, y:1020, size:120}),
+      routeLayer({x:650, y:1440, w:720, h:680}),
+      textLayer("meta", {x:90, y:1832, size:30})
+    ]}); }},
+    {id:"photo", name:"Photo", needsPhoto:true, make:function(){ var pid = firstPhotoId(); return baseDesign({
+      bg:{type: pid ? "photo" : "gradient", photoId:pid, dim:0.1, scrim:true},
+      layers:[
+        routeLayer({x:880, y:290, w:300, h:300, color:"white", glow:false, width:6}),
+        textLayer("meta",  {x:90, y:1290, size:28, color:"white", shadow:true}),
+        textLayer("title", {x:90, y:1336, size:66, color:"white", shadow:true}),
+        statLayer("distance", {x:90,  y:1560, size:58, color:"white", labelColor:"white", shadow:true}),
+        statLayer("time",     {x:420, y:1560, size:58, color:"white", labelColor:"white", shadow:true}),
+        statLayer("pace",     {x:750, y:1560, size:58, color:"white", labelColor:"white", shadow:true}),
+        textLayer("brand", {x:90, y:1840, color:"white"})
+      ]}); }},
+    {id:"sticker", name:"Sticker", make:function(){ return baseDesign({bg:{type:"transparent"}, textColor:"#ffffff", layers:[
+      routeLayer({x:540, y:700, w:780, h:700, color:"white", glow:false, width:9}),
+      statLayer("distance", {x:540, y:1180, align:"center", size:110, labelColor:"white", shadow:true}),
+      statLayer("time",     {x:540, y:1420, align:"center", size:70, labelColor:"white", shadow:true}),
+      statLayer("pace",     {x:540, y:1620, align:"center", size:70, labelColor:"white", shadow:true})
+    ]}); }},
+    {id:"polaroid", name:"Polaroid", needsPhoto:true, make:function(){
+      var pid = firstPhotoId();
+      var layers = [];
+      if(pid) layers.push(photoLayer(pid, {x:540, y:760, w:920, h:1060, radius:14}));
+      else layers.push(routeLayer({x:540, y:760, w:860, h:900, color:"accent", glow:false, width:9}));
+      layers.push(
+        textLayer("meta",  {x:80, y:1330, size:28}),
+        textLayer("title", {x:80, y:1376, size:62}),
+        statLayer("distance", {x:80,  y:1580, size:56}),
+        statLayer("time",     {x:420, y:1580, size:56}),
+        statLayer("pace",     {x:760, y:1580, size:56})
+      );
+      if(pid) layers.push(routeLayer({x:930, y:1810, w:170, h:170, color:"accent", glow:false, width:5, dots:false}));
+      return baseDesign({bg:{type:"solid", color:"#f3efe8"}, textColor:"#1b1a1d", layers:layers});
+    }}
+  ];
+  var MY_STYLE_KEY = "traceur.monstyle.v1";
+  function loadMyStyle(){
+    try{ var raw = localStorage.getItem(MY_STYLE_KEY); return raw ? JSON.parse(raw) : null; }catch(e){ return null; }
+  }
+  function saveMyStyle(){
+    var d = JSON.parse(snapshot());
+    d.layers = d.layers.filter(function(l){ return l.kind !== "photo"; });
+    if(d.bg.type === "photo"){ d.bg.type = "gradient"; d.bg.photoId = null; }
+    try{ localStorage.setItem(MY_STYLE_KEY, JSON.stringify(d)); toast("Style enregistré ✓ — il s'appliquera à tes prochaines stories"); }
+    catch(e){ toast("Impossible d'enregistrer sur cet appareil"); }
+    if(state.tab === "presets") buildTab();
+  }
+  function makePreset(id){
+    if(id === "mon-style"){
+      var s = loadMyStyle();
+      if(s){ s.layers.forEach(function(l){ l.id = nid(l.kind.charAt(0)); }); return ensureAll(baseDesign(s)); }
+      id = "classique";
+    }
+    var p = PRESETS.filter(function(x){ return x.id === id; })[0] || PRESETS[0];
+    var d = ensureAll(p.make());
+    d.palette = currentPalette();
+    return d;
+  }
+  function applyPreset(id, silent){
+    if(state.design && !silent) pushHistory();
+    var p = PRESETS.filter(function(x){ return x.id === id; })[0];
+    state.design = makePreset(id);
+    if(id === "mon-style"){ var s = loadMyStyle(); if(s && s.palette) state.design.palette = s.palette; }
+    state.presetId = id;
+    state.selectedId = null;
+    state.pendingPhotoPreset = null;
+    if(p && p.needsPhoto && !state.photos.length){
+      state.pendingPhotoPreset = id;
+      toast("Ajoute une photo dans l'onglet Photos pour compléter ce modèle");
+    }
+    refreshAll();
+  }
+
+  // ---------------------------------------------------------------
+  // Rendu
+  // ---------------------------------------------------------------
+  function hexToRgb(hex){
+    hex = String(hex || "").replace("#","");
+    if(hex.length === 3) hex = hex.split("").map(function(c){ return c+c; }).join("");
+    var n = parseInt(hex, 16);
+    if(isNaN(n)) return {r:255, g:255, b:255};
+    return {r:(n>>16)&255, g:(n>>8)&255, b:n&255};
+  }
+  function isLight(hex){ var c = hexToRgb(hex); return (0.299*c.r + 0.587*c.g + 0.114*c.b) > 150; }
+  function col(c, d){
+    switch(c){
+      case "accent":  return d.palette.a;
+      case "accent2": return d.palette.b;
+      case "text":    return d.textColor;
+      case "dim":     var t = hexToRgb(d.textColor); return "rgba(" + t.r + "," + t.g + "," + t.b + ",.6)";
+      case "white":   return "#ffffff";
+      case "black":   return "#111111";
+      default:        return c || d.textColor;
+    }
+  }
+  function fontStr(d, role, size){
+    var f = FONTS[d.font] || FONTS.Poppins;
+    return f.w[role] + " " + Math.max(1, Math.round(size)) + 'px "' + d.font + '", "Poppins", sans-serif';
+  }
+  function alignX(x, w, align){ return align === "center" ? x - w/2 : align === "right" ? x - w : x; }
+  function setSpacing(ctx, px){ if("letterSpacing" in ctx) ctx.letterSpacing = px + "px"; }
+  function applyShadow(ctx, l, s){
+    if(!l.shadow) return;
+    ctx.shadowColor = "rgba(0,0,0,.55)"; ctx.shadowBlur = Math.max(6, s*0.22); ctx.shadowOffsetY = Math.max(2, s*0.04);
+  }
+  function clearShadow(ctx){ ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0; }
+
+  function wrapLines(ctx, txt, maxW, maxLines){
+    var words = txt.split(/\s+/), lines = [], cur = "";
+    words.forEach(function(w){
+      var t = cur ? cur + " " + w : w;
+      if(ctx.measureText(t).width > maxW && cur){ lines.push(cur); cur = w; } else { cur = t; }
+    });
+    if(cur) lines.push(cur);
+    if(lines.length > maxLines){ lines = lines.slice(0, maxLines); lines[maxLines-1] += "…"; }
+    return lines;
+  }
+
+  function drawCover(ctx, img, x, y, w, h){
+    var iw = img.width, ih = img.height;
+    var sc = Math.max(w/iw, h/ih), sw = w/sc, sh = h/sc;
+    ctx.drawImage(img, (iw-sw)/2, (ih-sh)/2, sw, sh, x, y, w, h);
+  }
+  function roundRectPath(ctx, x, y, w, h, r){
+    r = Math.max(0, Math.min(r, w/2, h/2));
+    ctx.beginPath();
+    ctx.moveTo(x+r, y);
+    ctx.arcTo(x+w, y, x+w, y+h, r);
+    ctx.arcTo(x+w, y+h, x, y+h, r);
+    ctx.arcTo(x, y+h, x, y, r);
+    ctx.arcTo(x, y, x+w, y, r);
+    ctx.closePath();
+  }
+  function fillGradient(ctx, c1, c2){
+    var g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, c1); g.addColorStop(1, c2);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  }
+  function drawChecker(ctx){
+    var s = 60;
+    for(var y=0; y<H; y+=s){ for(var x=0; x<W; x+=s){
+      ctx.fillStyle = ((x/s + y/s) % 2) ? "#2a2a2e" : "#1e1e21";
+      ctx.fillRect(x, y, s, s);
+    }}
+  }
+
+  function drawBackground(ctx, d, opt){
+    var bg = d.bg;
+    if(bg.type === "transparent"){ if(!opt.export) drawChecker(ctx); return; }
+    if(bg.type === "photo"){
+      var p = getPhoto(bg.photoId);
+      if(p){
+        drawCover(ctx, p.img, 0, 0, W, H);
+        if(bg.dim > 0){ ctx.fillStyle = "rgba(0,0,0," + bg.dim + ")"; ctx.fillRect(0, 0, W, H); }
+      } else {
+        fillGradient(ctx, "#121214", "#1d1b1f");
+        if(!opt.export && !opt.thumb){
+          ctx.fillStyle = "rgba(255,255,255,.35)"; ctx.font = '500 34px "Poppins", sans-serif'; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.fillText("Ajoute une photo de fond (onglet Photos)", W/2, H*0.36);
+          ctx.textAlign = "left";
+        }
+      }
+    }
+    else if(bg.type === "solid"){ ctx.fillStyle = bg.color; ctx.fillRect(0, 0, W, H); }
+    else { fillGradient(ctx, bg.color, bg.color2); }
+    if(bg.scrim){
+      var g = ctx.createLinearGradient(0, H*0.42, 0, H);
+      g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,.78)");
+      ctx.fillStyle = g; ctx.fillRect(0, H*0.42, W, H*0.58);
+    }
+  }
+
+  function projectRoute(points, box){
+    var lats = points.map(function(p){ return p[0]; }), lons = points.map(function(p){ return p[1]; });
+    var latMin = Math.min.apply(null, lats), latMax = Math.max.apply(null, lats);
+    var lonMin = Math.min.apply(null, lons), lonMax = Math.max.apply(null, lons);
+    // correction de latitude pour garder les proportions réelles
+    var k = Math.cos((latMin + latMax) / 2 * Math.PI / 180);
+    var latSpan = Math.max(latMax - latMin, 1e-6), lonSpan = Math.max((lonMax - lonMin) * k, 1e-6);
+    var bw = box.x1 - box.x0, bh = box.y1 - box.y0;
+    var sc = Math.min(bw/lonSpan, bh/latSpan) * 0.92;
+    var cx = box.x0 + bw/2, cy = box.y0 + bh/2, lonC = (lonMin+lonMax)/2, latC = (latMin+latMax)/2;
+    return points.map(function(p){ return [cx + (p[1]-lonC)*k*sc, cy - (p[0]-latC)*sc]; });
+  }
+
+  function drawRoute(ctx, d, act, l, opt){
+    var w = l.w*l.scale, h = l.h*l.scale;
+    var box = {x0:l.x - w/2, y0:l.y - h/2, x1:l.x + w/2, y1:l.y + h/2};
+    l._box = box;
+    if(!act.route || act.route.length < 2){
+      if(!opt.export){
+        ctx.save(); ctx.strokeStyle = "rgba(255,255,255,.25)"; ctx.setLineDash([16,12]); ctx.lineWidth = 3;
+        ctx.strokeRect(box.x0, box.y0, w, h); ctx.restore();
+      }
+      return;
+    }
+    var pts = projectRoute(act.route, box);
+    var lw = Math.max(1, l.width * l.scale);
+    function path(){ ctx.beginPath(); pts.forEach(function(p, i){ i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }); }
+    ctx.save();
+    ctx.lineJoin = "round"; ctx.lineCap = "round";
+    if(l.glow){
+      ctx.strokeStyle = col("accent", d); ctx.lineWidth = lw*3; ctx.shadowColor = col("accent", d);
+      ctx.shadowBlur = 40*l.scale; ctx.globalAlpha = 0.55; path(); ctx.stroke();
+      ctx.globalAlpha = 1; clearShadow(ctx);
+    }
+    ctx.strokeStyle = col(l.color, d); ctx.lineWidth = lw; path(); ctx.stroke();
+    if(l.dots){
+      ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.arc(pts[0][0], pts[0][1], lw*1.7, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = col("accent", d); ctx.beginPath(); ctx.arc(pts[pts.length-1][0], pts[pts.length-1][1], lw*2, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawText(ctx, d, act, l){
+    var txt = TEXTS[l.key] ? TEXTS[l.key].get(act, l) : "";
+    if(!txt){ l._box = null; return; }
+    if(l.upper) txt = txt.toUpperCase();
+    var s = l.size * l.scale;
+    ctx.save();
+    ctx.font = fontStr(d, l.role, s); ctx.fillStyle = col(l.color, d); ctx.textBaseline = "top";
+    setSpacing(ctx, l.role === "label" ? s*0.06 : 0);
+    applyShadow(ctx, l, s);
+    var avail = l.align === "center" ? 2*Math.min(l.x, W - l.x) : l.align === "right" ? l.x : W - l.x;
+    avail = Math.max(260, avail - 60);
+    var lines = (l.key === "title" || l.key === "custom") ? wrapLines(ctx, txt, avail, 3) : [txt];
+    var lh = s*1.1, wmax = 0;
+    lines.forEach(function(ln, i){
+      var w = ctx.measureText(ln).width; wmax = Math.max(wmax, w);
+      ctx.fillText(ln, alignX(l.x, w, l.align), l.y + i*lh);
+    });
+    ctx.restore();
+    var bx = alignX(l.x, wmax, l.align);
+    l._box = {x0:bx, y0:l.y, x1:bx + wmax, y1:l.y + lines.length*lh};
+  }
+
+  function drawStat(ctx, d, act, l){
+    var parts = STATS[l.key].get(act);
+    if(!parts){ l._box = null; return; }
+    var s = l.size * l.scale, ls = Math.max(12, s*0.44), us = s*0.46, y = l.y, labelH = 0, labelW = 0;
+    ctx.save();
+    ctx.textBaseline = "alphabetic";
+    applyShadow(ctx, l, s);
+    if(l.showLabel){
+      ctx.font = fontStr(d, "label", ls); setSpacing(ctx, ls*0.08); ctx.fillStyle = col(l.labelColor, d);
+      var lab = STATS[l.key].label; labelW = ctx.measureText(lab).width;
+      ctx.fillText(lab, alignX(l.x, labelW, l.align), y + ls*0.95);
+      setSpacing(ctx, 0); labelH = ls*1.35;
+    }
+    ctx.font = fontStr(d, "value", s);
+    var mNum = ctx.measureText(parts[0]), nw = mNum.width;
+    var asc = mNum.actualBoundingBoxAscent || s*0.72;
+    var uw = 0, gap = s*0.1;
+    if(parts[1]){ ctx.font = fontStr(d, "value", us); uw = ctx.measureText(parts[1]).width; }
+    var total = nw + (parts[1] ? gap + uw : 0);
+    var x0 = alignX(l.x, total, l.align), by = y + labelH + asc;
+    ctx.fillStyle = col(l.color, d);
+    ctx.font = fontStr(d, "value", s); ctx.fillText(parts[0], x0, by);
+    if(parts[1]){ ctx.font = fontStr(d, "value", us); ctx.fillText(parts[1], x0 + nw + gap, by); }
+    ctx.restore();
+    var bw = Math.max(labelW, total), bx = alignX(l.x, bw, l.align);
+    l._box = {x0:Math.min(bx, x0), y0:y, x1:Math.max(bx + bw, x0 + total), y1:by + s*0.14};
+  }
+
+  function drawPhotoLayer(ctx, d, l){
+    var p = getPhoto(l.photoId);
+    if(!p){ l._box = null; return; }
+    var w = l.w*l.scale, h = l.h*l.scale, x0 = l.x - w/2, y0 = l.y - h/2, r = l.radius*l.scale;
+    ctx.save();
+    ctx.globalAlpha = l.opacity;
+    roundRectPath(ctx, x0, y0, w, h, r); ctx.clip();
+    drawCover(ctx, p.img, x0, y0, w, h);
+    ctx.restore();
+    if(l.border){
+      ctx.save(); ctx.lineWidth = 12*l.scale; ctx.strokeStyle = "#ffffff";
+      roundRectPath(ctx, x0, y0, w, h, r); ctx.stroke(); ctx.restore();
+    }
+    l._box = {x0:x0, y0:y0, x1:x0 + w, y1:y0 + h};
+  }
+
+  function drawOverlay(ctx){
+    if(state.guides){
+      ctx.save(); ctx.strokeStyle = "#ff3fa4"; ctx.lineWidth = 3; ctx.setLineDash([14,10]);
+      if(state.guides.v){ ctx.beginPath(); ctx.moveTo(W/2, 0); ctx.lineTo(W/2, H); ctx.stroke(); }
+      if(state.guides.h){ ctx.beginPath(); ctx.moveTo(0, H/2); ctx.lineTo(W, H/2); ctx.stroke(); }
+      ctx.restore();
+    }
+    var sel = selectedLayer();
+    if(sel && sel.visible && sel._box){
+      var b = padBox(sel._box, 16);
+      ctx.save();
+      ctx.lineWidth = 4; ctx.setLineDash([20,12]); ctx.strokeStyle = "rgba(255,255,255,.95)";
+      ctx.shadowColor = "rgba(0,0,0,.6)"; ctx.shadowBlur = 8;
+      ctx.strokeRect(b.x0, b.y0, b.x1 - b.x0, b.y1 - b.y0);
+      ctx.setLineDash([]);
+      ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.arc(b.x1, b.y1, 28, 0, Math.PI*2); ctx.fill();
+      clearShadow(ctx);
+      ctx.strokeStyle = "#111"; ctx.lineWidth = 5; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(b.x1 - 10, b.y1 - 10); ctx.lineTo(b.x1 + 10, b.y1 + 10);
+      ctx.moveTo(b.x1 + 10, b.y1 + 10); ctx.lineTo(b.x1 + 10, b.y1 - 2);
+      ctx.moveTo(b.x1 + 10, b.y1 + 10); ctx.lineTo(b.x1 - 2, b.y1 + 10);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  function renderDesign(canvas, d, act, opt){
+    opt = opt || {};
+    var ctx = canvas.getContext("2d");
+    ctx.save();
+    ctx.setTransform(canvas.width/W, 0, 0, canvas.height/H, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    drawBackground(ctx, d, opt);
+    d.layers.forEach(function(l){
+      if(!l.visible){ l._box = null; return; }
+      if(l.kind === "photo") drawPhotoLayer(ctx, d, l);
+      else if(l.kind === "route") drawRoute(ctx, d, act, l, opt);
+      else if(l.kind === "text") drawText(ctx, d, act, l);
+      else if(l.kind === "stat") drawStat(ctx, d, act, l);
+    });
+    if(!opt.export && !opt.thumb) drawOverlay(ctx);
+    ctx.restore();
+  }
+
+  // ---------------------------------------------------------------
+  // Sélection / historique
+  // ---------------------------------------------------------------
+  function findLayer(id){ if(!state.design || !id) return null; return state.design.layers.filter(function(l){ return l.id === id; })[0] || null; }
+  function selectedLayer(){ return findLayer(state.selectedId); }
+  function padBox(b, p){ return {x0:b.x0 - p, y0:b.y0 - p, x1:b.x1 + p, y1:b.y1 + p}; }
+  function inBox(pt, b){ return pt.x >= b.x0 && pt.x <= b.x1 && pt.y >= b.y0 && pt.y <= b.y1; }
+
+  function snapshot(){ return JSON.stringify(state.design, function(k, v){ return k === "_box" ? undefined : v; }); }
+  function pushHistory(){
+    if(!state.design) return;
+    state.history.push(snapshot());
+    if(state.history.length > 60) state.history.shift();
+    updateUndo();
+  }
+  function undo(){
+    var s = state.history.pop();
+    if(!s) return;
+    state.design = JSON.parse(s);
+    if(!selectedLayer()) state.selectedId = null;
+    refreshAll(); updateUndo();
+  }
+  function updateUndo(){ undoBtn.disabled = !state.history.length; }
+
+  function layerName(l){
+    if(l.kind === "text") return TEXTS[l.key] ? TEXTS[l.key].name : "Texte";
+    if(l.kind === "stat") return STATS[l.key].name;
+    if(l.kind === "route") return "Tracé GPS";
+    return "Photo";
+  }
+
+  function select(id){
+    state.selectedId = id;
+    buildInspector();
+    if(state.tab === "elements") buildTab();
+    redraw();
+  }
+
+  // ---------------------------------------------------------------
+  // DOM
+  // ---------------------------------------------------------------
+  var $ = function(id){ return document.getElementById(id); };
+  var listEl = $("activity-list"), editCanvas = $("edit-canvas"), storyTitle = $("story-title");
+  var toastEl = $("toast"), accountDot = $("account-dot"), accountLabel = $("account-label");
+  var connectPanel = $("connect-panel"), connectBtn = $("connect-btn"), connectedRow = $("connected-row");
+  var connectedLabel = $("connected-label"), refreshBtn = $("refresh-btn"), undoBtn = $("undo-btn");
+  var inspectorEl = $("inspector"), tabPanel = $("tab-panel"), photoInput = $("photo-input");
+  var loginBtn = $("login-btn"), loginCanvas = $("login-canvas");
+
+  function el(tag, attrs, children){
+    var e = document.createElement(tag);
+    if(attrs) Object.keys(attrs).forEach(function(k){
+      if(k === "class") e.className = attrs[k];
+      else if(k === "text") e.textContent = attrs[k];
+      else if(k === "html") e.innerHTML = attrs[k];
+      else if(k.slice(0,2) === "on") e.addEventListener(k.slice(2), attrs[k]);
+      else if(k === "style") e.setAttribute("style", attrs[k]);
+      else e[k] = attrs[k];
+    });
+    (children || []).forEach(function(c){ if(c) e.appendChild(typeof c === "string" ? document.createTextNode(c) : c); });
+    return e;
+  }
+
+  function toast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function(){ toastEl.classList.remove("show"); }, 3200);
+  }
+
+  var rafPending = false;
+  function redraw(){
+    if(rafPending) return;
+    rafPending = true;
+    requestAnimationFrame(function(){
+      rafPending = false;
+      if(state.design && state.activity) renderDesign(editCanvas, state.design, state.activity, {});
+    });
+  }
+  function refreshAll(){ redraw(); buildInspector(); buildTab(); }
+
   function showScreen(id){
-    document.querySelectorAll(".screen").forEach(function(el){ el.classList.toggle("active", el.id === id); });
-    window.scrollTo(0,0);
+    document.querySelectorAll(".screen").forEach(function(s){ s.classList.toggle("active", s.id === id); });
+    window.scrollTo(0, 0);
   }
 
-  async function openStory(activity){
-    state.activity = activity;
-    storyTitle.textContent = activity.name;
-    showScreen("screen-story");
-    buildSwatches();
-    hideOverlay();
-    if(document.fonts && document.fonts.ready){ await document.fonts.ready; }
-    draw();
-    window.scrollTo(0,0);
+  // ---------- contrôles réutilisables ----------
+  function ctrl(label, valueText, body){
+    var lab = el("div", {class:"ctrl-label"}, [el("span", {text:label}), valueText != null ? el("b", {text:valueText}) : null]);
+    return el("div", {class:"ctrl"}, [lab, body]);
+  }
+  function slider(label, min, max, step, value, fmt, oninput){
+    var valEl;
+    var input = el("input", {type:"range", min:min, max:max, step:step, value:value});
+    var started = false;
+    function start(){ if(!started){ pushHistory(); started = true; } }
+    input.addEventListener("pointerdown", start);
+    input.addEventListener("keydown", start);
+    input.addEventListener("input", function(){ start(); oninput(parseFloat(input.value)); valEl.textContent = fmt(parseFloat(input.value)); redraw(); });
+    input.addEventListener("change", function(){ started = false; });
+    var c = ctrl(label, fmt(value), input);
+    valEl = c.querySelector("b");
+    return c;
+  }
+  function toggle(label, checked, onchange){
+    var input = el("input", {type:"checkbox", class:"sw", checked:!!checked});
+    input.addEventListener("change", function(){ pushHistory(); onchange(input.checked); redraw(); });
+    return el("label", {class:"toggle-row"}, [el("span", {text:label}), input]);
+  }
+  function seg(options, current, onpick){
+    var wrap = el("div", {class:"seg"});
+    options.forEach(function(o){
+      wrap.appendChild(el("button", {type:"button", class:o.value === current ? "on" : "", text:o.label, style:o.style || "",
+        onclick:function(){ pushHistory(); onpick(o.value); refreshAll(); }}));
+    });
+    return wrap;
+  }
+  function colorChips(current, onpick, opts){
+    var d = state.design, wrap = el("div", {class:"chips"});
+    var keys = (opts && opts.keys) || ["text","accent","accent2","white","black"];
+    keys.forEach(function(k){
+      wrap.appendChild(el("button", {type:"button", class:"chip-color" + (current === k ? " on" : ""), title:k,
+        style:"background:" + col(k, d), onclick:function(){ pushHistory(); onpick(k); refreshAll(); }}));
+    });
+    var custom = el("input", {type:"color", class:"color-input", title:"Couleur perso",
+      value: /^#([0-9a-f]{6})$/i.test(current) ? current : "#ff6a2e"});
+    var started = false;
+    custom.addEventListener("input", function(){ if(!started){ pushHistory(); started = true; } onpick(custom.value); redraw(); });
+    custom.addEventListener("change", function(){ started = false; buildInspector(); });
+    wrap.appendChild(custom);
+    return wrap;
+  }
+  function btn(label, onclick, cls){ return el("button", {type:"button", class:"mini-btn" + (cls ? " " + cls : ""), text:label, onclick:onclick}); }
+
+  // ---------- inspecteur (élément sélectionné) ----------
+  function setAlign(l, align){
+    if(l._box){ var b = l._box; l.x = align === "left" ? b.x0 : align === "center" ? (b.x0 + b.x1)/2 : b.x1; }
+    l.align = align;
+  }
+  function centerH(l){
+    if(l.kind === "route" || l.kind === "photo"){ l.x = W/2; return; }
+    if(!l._box) return;
+    l.x += W/2 - (l._box.x0 + l._box.x1)/2;
+  }
+  function moveZ(l, dir){
+    var arr = state.design.layers, i = arr.indexOf(l), j = i + dir;
+    if(j < 0 || j >= arr.length) return;
+    arr.splice(i, 1); arr.splice(j, 0, l);
+  }
+  function removeLayer(l){
+    var arr = state.design.layers; arr.splice(arr.indexOf(l), 1);
+    state.selectedId = null;
   }
 
-  document.getElementById("back-btn").addEventListener("click", function(){ showScreen("screen-home"); });
+  function buildInspector(){
+    var l = selectedLayer();
+    inspectorEl.innerHTML = "";
+    if(!l || !l.visible){ inspectorEl.hidden = true; return; }
+    inspectorEl.hidden = false;
+    var pct = function(v){ return Math.round(v*100) + " %"; };
 
-  document.getElementById("regen-btn").addEventListener("click", function(){
-    draw();
-    toast("Aperçu régénéré");
+    inspectorEl.appendChild(el("div", {class:"insp-head"}, [
+      el("span", {text:layerName(l)}),
+      el("button", {type:"button", text:"✕", title:"Fermer", onclick:function(){ select(null); }})
+    ]));
+
+    if(l.kind === "text" && l.key === "custom"){
+      var ti = el("input", {type:"text", class:"text-input", value:l.text || "", maxLength:80, placeholder:"Ton texte"});
+      var typed = false;
+      ti.addEventListener("input", function(){ if(!typed){ pushHistory(); typed = true; } l.text = ti.value; redraw(); if(state.tab === "elements") buildTab(); });
+      inspectorEl.appendChild(ctrl("Texte", null, ti));
+    }
+
+    inspectorEl.appendChild(slider("Taille", 0.3, 3, 0.05, l.scale, pct, function(v){ l.scale = v; }));
+
+    if(l.kind === "text" || l.kind === "stat"){
+      inspectorEl.appendChild(ctrl(l.kind === "stat" ? "Couleur du chiffre" : "Couleur", null, colorChips(l.color, function(c){ l.color = c; })));
+      if(l.kind === "stat"){
+        inspectorEl.appendChild(toggle("Afficher le libellé (" + STATS[l.key].label + ")", l.showLabel, function(v){ l.showLabel = v; buildInspector(); }));
+        if(l.showLabel) inspectorEl.appendChild(ctrl("Couleur du libellé", null, colorChips(l.labelColor, function(c){ l.labelColor = c; }, {keys:["dim","text","accent","accent2","white","black"]})));
+      }
+      if(l.kind === "text") inspectorEl.appendChild(toggle("Majuscules", l.upper, function(v){ l.upper = v; }));
+      inspectorEl.appendChild(ctrl("Alignement", null, seg([
+        {label:"Gauche", value:"left"}, {label:"Centre", value:"center"}, {label:"Droite", value:"right"}
+      ], l.align, function(v){ setAlign(l, v); })));
+      inspectorEl.appendChild(toggle("Ombre (lisible sur photo)", l.shadow, function(v){ l.shadow = v; }));
+    }
+
+    if(l.kind === "route"){
+      inspectorEl.appendChild(ctrl("Couleur du tracé", null, colorChips(l.color, function(c){ l.color = c; })));
+      inspectorEl.appendChild(slider("Épaisseur", 2, 24, 1, l.width, function(v){ return v + " px"; }, function(v){ l.width = v; }));
+      inspectorEl.appendChild(toggle("Effet lumineux", l.glow, function(v){ l.glow = v; }));
+      inspectorEl.appendChild(toggle("Points départ / arrivée", l.dots, function(v){ l.dots = v; }));
+    }
+
+    if(l.kind === "photo"){
+      inspectorEl.appendChild(slider("Opacité", 0.1, 1, 0.05, l.opacity, pct, function(v){ l.opacity = v; }));
+      inspectorEl.appendChild(slider("Arrondi des coins", 0, 300, 2, l.radius, function(v){ return Math.round(v) + " px"; }, function(v){ l.radius = v; }));
+      inspectorEl.appendChild(toggle("Bordure blanche", l.border, function(v){ l.border = v; }));
+      inspectorEl.appendChild(el("div", {class:"actions"}, [
+        btn("Format carré", function(){ pushHistory(); var s = Math.min(l.w, l.h); l.w = s; l.h = s; refreshAll(); }),
+        btn("Format portrait", function(){ pushHistory(); l.w = 760; l.h = 960; refreshAll(); }),
+        btn("Plein écran", function(){ pushHistory(); l.w = W; l.h = H; l.scale = 1; l.x = W/2; l.y = H/2; l.radius = 0; refreshAll(); })
+      ]));
+    }
+
+    var row1 = [
+      btn("↔ Centrer", function(){ pushHistory(); centerH(l); refreshAll(); }),
+      btn("▲ Devant", function(){ pushHistory(); moveZ(l, 1); refreshAll(); }),
+      btn("▼ Derrière", function(){ pushHistory(); moveZ(l, -1); refreshAll(); })
+    ];
+    inspectorEl.appendChild(el("div", {class:"actions"}, row1));
+    var removable = l.kind === "photo" || (l.kind === "text" && l.key === "custom");
+    inspectorEl.appendChild(el("div", {class:"actions"}, [
+      removable
+        ? btn("Supprimer", function(){ pushHistory(); removeLayer(l); refreshAll(); }, "danger")
+        : btn("Masquer cet élément", function(){ pushHistory(); l.visible = false; state.selectedId = null; refreshAll(); }, "danger")
+    ]));
+  }
+
+  // ---------- onglets ----------
+  function buildTab(){
+    document.querySelectorAll(".tab").forEach(function(t){ t.classList.toggle("active", t.dataset.tab === state.tab); });
+    tabPanel.innerHTML = "";
+    if(!state.design) return;
+    ({presets:buildPresetsTab, elements:buildElementsTab, photos:buildPhotosTab, style:buildStyleTab})[state.tab]();
+  }
+
+  var thumbFull = document.createElement("canvas"); thumbFull.width = W; thumbFull.height = H;
+  function presetThumb(id){
+    var c = el("canvas", {width:270, height:480});
+    var d = makePreset(id);
+    if(id !== "mon-style") d.palette = currentPalette();
+    renderDesign(c, d, state.activity, {thumb:true});
+    return c;
+  }
+  function buildPresetsTab(){
+    tabPanel.appendChild(el("p", {class:"note", text:"Choisis un modèle, puis ajuste chaque élément à ta façon. Tes photos et ta palette sont gardées."}));
+    var grid = el("div", {class:"preset-grid"});
+    var ids = [];
+    if(loadMyStyle()) ids.push({id:"mon-style", name:"★ Mon style"});
+    PRESETS.forEach(function(p){ ids.push({id:p.id, name:p.name}); });
+    ids.forEach(function(p){
+      grid.appendChild(el("button", {type:"button", class:"preset-card" + (state.presetId === p.id ? " on" : ""), onclick:function(){ applyPreset(p.id); }},
+        [presetThumb(p.id), el("span", {text:p.name})]));
+    });
+    tabPanel.appendChild(grid);
+  }
+
+  function elementRow(l, value, available){
+    var cb = el("input", {type:"checkbox", class:"sw", checked:l.visible, disabled:!available});
+    cb.addEventListener("change", function(){
+      pushHistory(); l.visible = cb.checked;
+      state.selectedId = cb.checked ? l.id : (state.selectedId === l.id ? null : state.selectedId);
+      refreshAll();
+    });
+    return el("div", {class:"el-row" + (state.selectedId === l.id ? " sel" : "") + (available ? "" : " na")}, [
+      cb,
+      el("span", {class:"el-name", text:layerName(l)}),
+      el("span", {class:"el-val", text: available ? value : "indisponible"}),
+      (l.visible && available) ? el("button", {type:"button", class:"el-edit", text:"Modifier", onclick:function(){ select(l.id); inspectorEl.scrollIntoView({behavior:"smooth", block:"nearest"}); }}) : null
+    ]);
+  }
+  function buildElementsTab(){
+    var d = state.design, a = state.activity;
+    tabPanel.appendChild(el("p", {class:"panel-title", text:"Statistiques"}));
+    var s = el("div", {class:"el-list"});
+    STAT_ORDER.forEach(function(k){
+      var l = d.layers.filter(function(x){ return x.kind === "stat" && x.key === k; })[0];
+      if(!l) return;
+      var parts = STATS[k].get(a);
+      s.appendChild(elementRow(l, parts ? parts.join(" ").trim() : "", !!parts));
+    });
+    tabPanel.appendChild(s);
+
+    tabPanel.appendChild(el("p", {class:"panel-title", text:"Tracé & textes"}));
+    var t = el("div", {class:"el-list"});
+    var route = d.layers.filter(function(x){ return x.kind === "route"; })[0];
+    if(route) t.appendChild(elementRow(route, a.route && a.route.length > 1 ? "GPS" : "", !!(a.route && a.route.length > 1)));
+    d.layers.filter(function(x){ return x.kind === "text"; }).forEach(function(l){
+      var v = TEXTS[l.key].get(a, l) || "";
+      t.appendChild(elementRow(l, v, l.key === "custom" || !!v));
+    });
+    tabPanel.appendChild(t);
+    tabPanel.appendChild(el("button", {type:"button", class:"add-photo", text:"＋ Ajouter un texte libre", onclick:function(){
+      pushHistory();
+      var l = textLayer("custom", {x:W/2, y:H/2 - 40, align:"center"});
+      state.design.layers.push(l); state.selectedId = l.id; refreshAll();
+      var inp = inspectorEl.querySelector(".text-input"); if(inp){ inp.focus(); inp.select(); }
+    }}));
+  }
+
+  function buildPhotosTab(){
+    tabPanel.appendChild(el("button", {type:"button", class:"add-photo", text:"＋ Ajouter des photos", onclick:function(){ photoInput.click(); }}));
+    if(!state.photos.length){
+      tabPanel.appendChild(el("p", {class:"note", text:"Ajoute une ou plusieurs photos de ta sortie : en fond d'écran, ou en vignettes à placer où tu veux. Elles restent sur ton appareil, rien n'est envoyé."}));
+      return;
+    }
+    var grid = el("div", {class:"photo-grid"});
+    state.photos.forEach(function(p){
+      grid.appendChild(el("div", {class:"photo-item"}, [
+        el("img", {src:p.url, alt:""}),
+        btn("＋ Sur la story", function(){ addPhotoLayer(p); }),
+        btn("En fond", function(){ pushHistory(); state.design.bg.type = "photo"; state.design.bg.photoId = p.id; refreshAll(); toast("Photo mise en fond"); }),
+        btn("Retirer", function(){ removePhoto(p); }, "danger")
+      ]));
+    });
+    tabPanel.appendChild(grid);
+    tabPanel.appendChild(el("p", {class:"note", text:"Tes photos restent sur ton appareil, rien n'est envoyé."}));
+  }
+
+  function buildStyleTab(){
+    var d = state.design;
+    tabPanel.appendChild(el("p", {class:"panel-title", text:"Fond"}));
+    tabPanel.appendChild(seg([
+      {label:"Dégradé", value:"gradient"}, {label:"Uni", value:"solid"}, {label:"Photo", value:"photo"}, {label:"Transparent", value:"transparent"}
+    ], d.bg.type, function(v){
+      d.bg.type = v;
+      if(v === "photo" && !getPhoto(d.bg.photoId)){
+        d.bg.photoId = firstPhotoId();
+        if(!d.bg.photoId) toast("Ajoute d'abord une photo dans l'onglet Photos");
+      }
+    }));
+    if(d.bg.type === "gradient" || d.bg.type === "solid"){
+      var colors = el("div", {class:"chips"});
+      function bgInput(key){
+        var i = el("input", {type:"color", class:"color-input", value:d.bg[key]});
+        var st = false;
+        i.addEventListener("input", function(){ if(!st){ pushHistory(); st = true; } d.bg[key] = i.value; redraw(); });
+        i.addEventListener("change", function(){ st = false; });
+        return i;
+      }
+      colors.appendChild(bgInput("color"));
+      if(d.bg.type === "gradient") colors.appendChild(bgInput("color2"));
+      [["#121214","#1d1b1f"],["#0f172a","#1e293b"],["#1a1206","#2b1d0e"],["#f3efe8","#e7e0d4"],["#052e2b","#0f3d38"]].forEach(function(c){
+        colors.appendChild(el("button", {type:"button", class:"chip-color", style:"background:linear-gradient(180deg," + c[0] + "," + c[1] + ")",
+          onclick:function(){ pushHistory(); d.bg.color = c[0]; d.bg.color2 = c[1]; d.textColor = isLight(c[0]) ? "#1b1a1d" : "#f4f2f0"; refreshAll(); }}));
+      });
+      tabPanel.appendChild(ctrl(d.bg.type === "gradient" ? "Couleurs du dégradé" : "Couleur", null, colors));
+    }
+    if(d.bg.type === "photo"){
+      if(state.photos.length > 1){
+        var pick = el("div", {class:"chips"});
+        state.photos.forEach(function(p){
+          pick.appendChild(el("button", {type:"button", class:"chip-color" + (d.bg.photoId === p.id ? " on" : ""),
+            style:"width:44px;height:44px;border-radius:10px;background:url(" + p.url + ") center/cover",
+            onclick:function(){ pushHistory(); d.bg.photoId = p.id; refreshAll(); }}));
+        });
+        tabPanel.appendChild(ctrl("Photo de fond", null, pick));
+      }
+      tabPanel.appendChild(slider("Assombrir la photo", 0, 0.8, 0.05, d.bg.dim, function(v){ return Math.round(v*100) + " %"; }, function(v){ d.bg.dim = v; }));
+    }
+    if(d.bg.type === "transparent"){
+      tabPanel.appendChild(el("p", {class:"note", text:"Image PNG transparente : dans Instagram, ajoute-la en sticker par-dessus ta propre photo ou vidéo."}));
+    } else {
+      tabPanel.appendChild(toggle("Voile sombre en bas (textes plus lisibles)", d.bg.scrim, function(v){ d.bg.scrim = v; }));
+    }
+
+    tabPanel.appendChild(el("p", {class:"panel-title", text:"Couleurs d'accent"}));
+    var pal = el("div", {class:"chips"});
+    PALETTES.forEach(function(p){
+      var on = d.palette.a === p.a && d.palette.b === p.b;
+      pal.appendChild(el("button", {type:"button", class:"chip-color" + (on ? " on" : ""), title:p.name,
+        style:"background:linear-gradient(135deg," + p.a + " 50%," + p.b + " 50%)",
+        onclick:function(){ pushHistory(); d.palette = {a:p.a, b:p.b}; refreshAll(); }}));
+    });
+    ["a","b"].forEach(function(k){
+      var i = el("input", {type:"color", class:"color-input", value:d.palette[k], title:k === "a" ? "Accent 1" : "Accent 2"});
+      var st = false;
+      i.addEventListener("input", function(){ if(!st){ pushHistory(); st = true; } d.palette[k] = i.value; redraw(); });
+      i.addEventListener("change", function(){ st = false; });
+      pal.appendChild(i);
+    });
+    tabPanel.appendChild(pal);
+
+    tabPanel.appendChild(el("p", {class:"panel-title", text:"Couleur du texte"}));
+    var tc = el("div", {class:"chips"});
+    [["#f4f2f0","Clair"],["#1b1a1d","Sombre"]].forEach(function(c){
+      tc.appendChild(el("button", {type:"button", class:"chip-color" + (d.textColor === c[0] ? " on" : ""), title:c[1], style:"background:" + c[0],
+        onclick:function(){ pushHistory(); d.textColor = c[0]; refreshAll(); }}));
+    });
+    var tci = el("input", {type:"color", class:"color-input", value:/^#[0-9a-f]{6}$/i.test(d.textColor) ? d.textColor : "#ffffff"});
+    var tst = false;
+    tci.addEventListener("input", function(){ if(!tst){ pushHistory(); tst = true; } d.textColor = tci.value; redraw(); });
+    tci.addEventListener("change", function(){ tst = false; });
+    tc.appendChild(tci);
+    tabPanel.appendChild(tc);
+
+    tabPanel.appendChild(el("p", {class:"panel-title", text:"Police"}));
+    tabPanel.appendChild(seg(Object.keys(FONTS).map(function(f){
+      return {label:FONTS[f].label, value:f, style:"font-family:'" + f + "',sans-serif;font-size:15px;"};
+    }), d.font, function(v){
+      d.font = v;
+      if(document.fonts && document.fonts.load){
+        document.fonts.load(fontStr(d, "value", 50)).then(redraw, redraw);
+      }
+    }));
+
+    tabPanel.appendChild(el("p", {class:"panel-title", text:"Mon style"}));
+    tabPanel.appendChild(el("div", {class:"actions"}, [
+      btn("★ Enregistrer comme mon style", saveMyStyle),
+      btn("Réinitialiser le modèle", function(){ applyPreset(state.presetId); })
+    ]));
+    tabPanel.appendChild(el("p", {class:"note", text:"« Mon style » garde la position de chaque élément, les couleurs et la police, et s'applique automatiquement à tes prochaines stories."}));
+  }
+
+  document.querySelectorAll(".tab").forEach(function(t){
+    t.addEventListener("click", function(){ state.tab = t.dataset.tab; buildTab(); });
   });
 
-  // Sur téléphone : feuille de partage native (→ Instagram directement).
-  // Sur ordi : téléchargement classique du PNG.
-  document.getElementById("save-btn").addEventListener("click", function(){
-    canvas.toBlob(async function(blob){
+  // ---------- photos ----------
+  function addPhotoLayer(p){
+    pushHistory();
+    var ratio = p.img.width / p.img.height, w = 720, h = w / ratio;
+    if(h > 1000){ h = 1000; w = h * ratio; }
+    var l = photoLayer(p.id, {w:w, h:h, x:W/2, y:H/2});
+    // sous les textes/stats : juste au-dessus des autres photos
+    var arr = state.design.layers, idx = 0;
+    while(idx < arr.length && arr[idx].kind === "photo") idx++;
+    arr.splice(idx, 0, l);
+    state.selectedId = l.id;
+    refreshAll();
+    window.scrollTo({top:0, behavior:"smooth"});
+  }
+  function removePhoto(p){
+    pushHistory();
+    state.photos = state.photos.filter(function(x){ return x !== p; });
+    state.design.layers = state.design.layers.filter(function(l){ return !(l.kind === "photo" && l.photoId === p.id); });
+    if(state.design.bg.photoId === p.id){ state.design.bg.photoId = firstPhotoId(); if(!state.design.bg.photoId && state.design.bg.type === "photo") state.design.bg.type = "gradient"; }
+    if(!selectedLayer()) state.selectedId = null;
+    refreshAll();
+  }
+  function loadPhotoFile(file){
+    return new Promise(function(resolve){
+      var url = URL.createObjectURL(file), img = new Image();
+      img.onload = function(){
+        var max = 2160, sc = Math.min(1, max / Math.max(img.width, img.height)), src = img;
+        if(sc < 1){
+          var cv = document.createElement("canvas");
+          cv.width = Math.round(img.width*sc); cv.height = Math.round(img.height*sc);
+          cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+          src = cv;
+        }
+        resolve({id:nid("ph"), img:src, url:url});
+      };
+      img.onerror = function(){ resolve(null); };
+      img.src = url;
+    });
+  }
+  photoInput.addEventListener("change", async function(){
+    var files = [].slice.call(photoInput.files || []);
+    photoInput.value = "";
+    var added = [];
+    for(var i=0; i<files.length; i++){ var p = await loadPhotoFile(files[i]); if(p) added.push(p); }
+    if(!added.length){ if(files.length) toast("Image illisible"); return; }
+    var wasEmpty = !state.photos.length;
+    added.forEach(function(p){ state.photos.push(p); });
+    if(state.pendingPhotoPreset){ applyPreset(state.pendingPhotoPreset); }
+    else if(state.design.bg.type === "photo" && !getPhoto(state.design.bg.photoId)){ pushHistory(); state.design.bg.photoId = added[0].id; refreshAll(); }
+    else if(wasEmpty && added.length === 1){ addPhotoLayer(added[0]); }
+    else { buildTab(); }
+    toast(added.length > 1 ? added.length + " photos ajoutées" : "Photo ajoutée");
+  });
+
+  // ---------- manipulation directe sur la story ----------
+  function canvasPoint(e){
+    var r = editCanvas.getBoundingClientRect();
+    return {x:(e.clientX - r.left) * W / r.width, y:(e.clientY - r.top) * H / r.height};
+  }
+  function hitTest(pt){
+    var arr = state.design.layers;
+    for(var i = arr.length - 1; i >= 0; i--){
+      var l = arr[i];
+      if(l.visible && l._box && inBox(pt, padBox(l._box, 24))) return l;
+    }
+    return null;
+  }
+  function dist(a, b){ return Math.hypot(a.x - b.x, a.y - b.y); }
+  var pointers = new Map(), drag = null;
+
+  editCanvas.addEventListener("pointerdown", function(e){
+    if(!state.design) return;
+    editCanvas.setPointerCapture(e.pointerId);
+    var p = canvasPoint(e);
+    pointers.set(e.pointerId, p);
+    var sel = selectedLayer();
+    if(pointers.size === 2 && sel){
+      var pts = Array.from(pointers.values());
+      drag = {mode:"pinch", layer:sel, startDist:dist(pts[0], pts[1]), startScale:sel.scale, pushed:false};
+      return;
+    }
+    if(pointers.size > 1) return;
+    if(sel && sel._box){
+      var b = padBox(sel._box, 16);
+      if(dist(p, {x:b.x1, y:b.y1}) < 60){
+        var c = {x:(sel._box.x0 + sel._box.x1)/2, y:(sel._box.y0 + sel._box.y1)/2};
+        drag = {mode:"resize", layer:sel, center:c, startDist:Math.max(20, dist(p, c)), startScale:sel.scale, pushed:false};
+        return;
+      }
+    }
+    var hit = hitTest(p);
+    if(hit){
+      if(state.selectedId !== hit.id) select(hit.id);
+      var bx = hit._box;
+      drag = {mode:"move", layer:hit, start:p, ox:hit.x, oy:hit.y, pushed:false,
+        offCx:(bx.x0 + bx.x1)/2 - hit.x, offCy:(bx.y0 + bx.y1)/2 - hit.y};
+    } else {
+      drag = null;
+      if(state.selectedId) select(null);
+    }
+  });
+
+  editCanvas.addEventListener("pointermove", function(e){
+    if(!pointers.has(e.pointerId)) return;
+    var p = canvasPoint(e);
+    pointers.set(e.pointerId, p);
+    if(!drag) return;
+    var l = drag.layer;
+    function once(){ if(!drag.pushed){ pushHistory(); drag.pushed = true; } }
+    if(drag.mode === "move"){
+      var dx = p.x - drag.start.x, dy = p.y - drag.start.y;
+      if(!drag.pushed && Math.hypot(dx, dy) < 6) return;
+      once();
+      var nx = drag.ox + dx, ny = drag.oy + dy, g = {};
+      if(Math.abs(nx + drag.offCx - W/2) < 18){ nx = W/2 - drag.offCx; g.v = true; }
+      if(Math.abs(ny + drag.offCy - H/2) < 18){ ny = H/2 - drag.offCy; g.h = true; }
+      l.x = Math.max(-300, Math.min(W + 300, nx));
+      l.y = Math.max(-300, Math.min(H + 300, ny));
+      state.guides = (g.v || g.h) ? g : null;
+    } else if(drag.mode === "resize"){
+      once();
+      l.scale = Math.max(0.2, Math.min(4, drag.startScale * dist(p, drag.center) / drag.startDist));
+    } else if(drag.mode === "pinch" && pointers.size >= 2){
+      once();
+      var pts = Array.from(pointers.values());
+      l.scale = Math.max(0.2, Math.min(4, drag.startScale * dist(pts[0], pts[1]) / Math.max(20, drag.startDist)));
+    }
+    redraw();
+  });
+
+  function endPointer(e){
+    pointers.delete(e.pointerId);
+    if(pointers.size === 0){
+      var changed = drag && drag.pushed;
+      drag = null; state.guides = null;
+      redraw();
+      if(changed) buildInspector();
+    } else if(drag && drag.mode === "pinch"){
+      drag = null;
+    }
+  }
+  editCanvas.addEventListener("pointerup", endPointer);
+  editCanvas.addEventListener("pointercancel", endPointer);
+
+  document.addEventListener("keydown", function(e){
+    if(!$("screen-story").classList.contains("active")) return;
+    var tag = (e.target && e.target.tagName) || "";
+    if(tag === "INPUT" || tag === "TEXTAREA") return;
+    if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z"){ e.preventDefault(); undo(); return; }
+    var l = selectedLayer(); if(!l) return;
+    var step = e.shiftKey ? 20 : 4, moved = true;
+    if(e.key === "ArrowLeft") l.x -= step; else if(e.key === "ArrowRight") l.x += step;
+    else if(e.key === "ArrowUp") l.y -= step; else if(e.key === "ArrowDown") l.y += step;
+    else if(e.key === "Escape"){ select(null); moved = false; }
+    else moved = false;
+    if(moved){ e.preventDefault(); redraw(); }
+  });
+
+  undoBtn.addEventListener("click", undo);
+
+  // ---------- export ----------
+  $("save-btn").addEventListener("click", function(){
+    if(!state.design || !state.activity) return;
+    var c = document.createElement("canvas"); c.width = W; c.height = H;
+    renderDesign(c, state.design, state.activity, {export:true});
+    c.toBlob(async function(blob){
       if(!blob){ toast("Erreur de génération"); return; }
-      var filename = "story-" + (state.activity ? state.activity.id : "traceur") + ".png";
+      var filename = "story-" + state.activity.id + ".png";
       var file = new File([blob], filename, {type:"image/png"});
       if(navigator.canShare && navigator.canShare({files:[file]})){
         try{ await navigator.share({files:[file], title:"Ma story Traceur"}); return; }
         catch(e){ if(e && e.name === "AbortError") return; }
       }
-      var url = URL.createObjectURL(blob);
-      var a = document.createElement("a");
+      var url = URL.createObjectURL(blob), a = document.createElement("a");
       a.href = url; a.download = filename;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
@@ -811,8 +1661,69 @@
   });
 
   // ---------------------------------------------------------------
-  // Connexion Strava (via le serveur Traceur)
+  // Écran liste + connexion
   // ---------------------------------------------------------------
+  function setAccountUI(){
+    if(state.connectStatus === "connected"){
+      accountDot.className = "dot ok";
+      accountLabel.textContent = "Strava · " + (state.athleteName || "Connecté");
+      connectPanel.style.display = "none";
+      connectedRow.style.display = "flex";
+      connectedLabel.textContent = "Connecté · " + (state.athleteName || "Strava");
+    } else if(state.connectStatus === "connecting"){
+      accountDot.className = "dot busy";
+      accountLabel.textContent = "Connexion…";
+      connectBtn.disabled = true; connectBtn.textContent = "Connexion…";
+    } else {
+      accountDot.className = "dot";
+      accountLabel.textContent = "Mode exemple";
+      connectPanel.style.display = "flex";
+      connectedRow.style.display = "none";
+      connectBtn.disabled = false; connectBtn.textContent = "Se connecter avec Strava";
+    }
+  }
+
+  function buildList(){
+    listEl.innerHTML = "";
+    state.activities.forEach(function(a){
+      var pace = fmtPace(a);
+      var card = el("div", {class:"activity-card", html:
+        '<div class="ac-top">' +
+          '<div class="ac-icon">' + (SPORT_ICON[a.sport] || "🏅") + '</div>' +
+          '<div><div class="ac-title"></div><div class="ac-sub"></div></div>' +
+          '<div class="ac-cta">Créer →</div>' +
+        '</div>' +
+        '<div class="ac-stats">' +
+          '<div class="ac-stat"><b>' + (a.distance_m/1000).toFixed(2) + ' km</b><span>Distance</span></div>' +
+          '<div class="ac-stat"><b>' + fmtTime(a.moving_time_s) + '</b><span>Temps</span></div>' +
+          (pace ? '<div class="ac-stat"><b>' + pace + '</b><span>' + (/Ride/.test(a.sport) ? 'Vitesse' : 'Allure') + '</span></div>' : '') +
+        '</div>'});
+      card.querySelector(".ac-title").textContent = a.name;
+      var sub = card.querySelector(".ac-sub");
+      if(a.demo) sub.appendChild(el("span", {class:"demo-pill", text:"Exemple"}));
+      sub.appendChild(document.createTextNode([a.location, a.date].filter(Boolean).join(" · ")));
+      card.addEventListener("click", function(){ openStory(a); });
+      listEl.appendChild(card);
+    });
+  }
+
+  function openStory(activity){
+    state.activity = activity;
+    storyTitle.textContent = activity.name;
+    if(!state.design){
+      state.presetId = loadMyStyle() ? "mon-style" : "classique";
+      state.design = makePreset(state.presetId);
+      if(state.presetId === "mon-style"){ var s = loadMyStyle(); if(s && s.palette) state.design.palette = s.palette; }
+      state.history = [];
+    }
+    state.selectedId = null;
+    updateUndo();
+    showScreen("screen-story");
+    refreshAll();
+  }
+
+  $("back-btn").addEventListener("click", function(){ state.selectedId = null; showScreen("screen-home"); });
+
   var ERREURS = {
     refus: "Connexion Strava annulée.",
     token: "Strava a refusé la connexion — réessaie.",
@@ -831,7 +1742,7 @@
         distance_m:a.distance_m, moving_time_s:a.moving_time_s,
         elevation_gain_m:a.elevation_gain_m, calories:a.calories,
         location:a.location || "", date:fmtDateFR(a.start_local),
-        route: decodePolyline(a.polyline)
+        route:decodePolyline(a.polyline || "")
       };
     });
     if(acts.length){ state.activities = acts; }
@@ -839,15 +1750,23 @@
     buildList();
   }
 
-  var loginBtn = document.getElementById("login-btn");
-  var loginCanvas = document.getElementById("login-canvas");
+  function fontsReady(){
+    if(!document.fonts || !document.fonts.load) return Promise.resolve();
+    return Promise.all([
+      '800 50px "Poppins"', '600 50px "Poppins"', '500 50px "Poppins"',
+      '400 50px "Bebas Neue"', '400 50px "Anton"', '700 50px "Oswald"', '500 50px "Oswald"'
+    ].map(function(f){ return document.fonts.load(f).catch(function(){}); }));
+  }
 
   async function showLogin(){
     loginBtn.disabled = false;
     loginBtn.textContent = "Se connecter avec Strava";
     showScreen("screen-login");
-    if(document.fonts && document.fonts.ready){ try{ await document.fonts.ready; }catch(e){} }
-    renderStory(loginCanvas, DEMO_ACTIVITIES[0], PALETTES[0]);
+    await fontsReady();
+    var saved = state.design; state.design = null;
+    var d = makePreset("classique");
+    state.design = saved;
+    renderDesign(loginCanvas, d, DEMO_ACTIVITIES[0], {export:true});
   }
 
   function goStrava(){
@@ -860,7 +1779,8 @@
   async function init(){
     var params = new URLSearchParams(location.search);
     var err = params.get("erreur");
-    if(err){ history.replaceState(null, "", "/"); }
+    if(err) history.replaceState(null, "", "/");
+    fontsReady().then(redraw);
     var me = {connected:false};
     try{ me = await (await fetch("/api/me", {credentials:"same-origin"})).json(); }catch(e){}
     if(me.connected){
@@ -871,21 +1791,19 @@
       await loadActivities();
     } else {
       await showLogin();
-      if(err){ toast(ERREURS[err] || "Connexion impossible"); }
+      if(err) toast(ERREURS[err] || "Connexion impossible");
     }
   }
 
   loginBtn.addEventListener("click", goStrava);
   connectBtn.addEventListener("click", goStrava);
-  document.getElementById("demo-btn").addEventListener("click", function(){
+  $("demo-btn").addEventListener("click", function(){
     state.activities = DEMO_ACTIVITIES.slice();
     buildList(); setAccountUI();
     showScreen("screen-home");
   });
-  refreshBtn.addEventListener("click", function(){
-    loadActivities().then(function(){ toast("Sorties actualisées"); });
-  });
-  document.getElementById("logout-btn").addEventListener("click", async function(){
+  refreshBtn.addEventListener("click", function(){ loadActivities().then(function(){ toast("Sorties actualisées"); }); });
+  $("logout-btn").addEventListener("click", async function(){
     await fetch("/auth/logout", {method:"POST", credentials:"same-origin"});
     state.connectStatus = "idle"; state.athleteName = null;
     state.activities = DEMO_ACTIVITIES.slice();
