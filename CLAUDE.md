@@ -14,6 +14,7 @@ parle-lui en français, simplement, sans jargon, avec des étapes concrètes. R�
 - `traceur-server/server.js` — Node/Express. Connexion Strava OAuth (`/auth/strava`, `/auth/callback`, `/auth/logout`), session en cookie signé (`cookie-session`, 30 jours), rafraîchissement auto du token, API `/api/me` et `/api/activities` (10 dernières sorties avec GPS, tracé en `summary_polyline`), et `/api/recap` (recap IA, voir plus bas).
 - `traceur-server/public/index.html` — tout le front en un seul fichier (HTML + CSS + JS vanilla, aucune lib) :
   - écran de chargement → page de connexion (bouton Strava + « Voir un exemple sans compte ») → liste des sorties → éditeur de story ;
+  - écran « Mon coach » (`screen-coach`) : discussion avec le coach IA, ouverte depuis la liste des sorties. La première question part toute seule ; la conversation vit dans le navigateur et repart de zéro à la déconnexion ;
   - éditeur sur canvas 1080×1920 à base de calques (`text`, `stat`, `route`, `photo`) : glisser pour déplacer, pincer ou tirer la poignée pour redimensionner, aimantation au centre, annuler (↺ / Ctrl+Z) ;
   - onglets Modèles (6 : classique, minimal, chiffres, photo, sticker transparent, polaroid), Éléments, Photos (restent sur l'appareil, jamais envoyées), Style (fond, palettes, couleur du texte, polices Poppins / Bebas Neue / Anton / Oswald) ;
   - onglet Éléments : bloc « Texte écrit par l'IA » → 3 accroches à poser sur la story (une seule à la fois, le calque est réutilisé) + une légende à copier ;
@@ -32,12 +33,19 @@ Le Client Secret a été partagé en clair dans une conversation : il faudra le 
 - Mode test Strava : 1 seul athlète en plus du propriétaire. Pour ouvrir au public → demander la validation de l'app à Strava.
 - La liste d'activités Strava ne donne pas les calories (il faudrait l'endpoint détail par activité).
 
-## Recap IA
-- `POST /api/recap` : reçoit les chiffres d'une sortie, renvoie `{phrases:[3], legende}` via l'API Claude (`claude-opus-5`, effort `low`, sortie JSON validée avec zod).
-- Le serveur ne transmet jamais le texte du navigateur tel quel : il reconstruit une fiche propre (`ficheActivite`) à partir des nombres, et tronque le nom/lieu/date.
-- Garde-fou coût : 20 recaps par heure et par adresse IP (`quotas` en mémoire).
-- Sans `ANTHROPIC_API_KEY`, le serveur démarre quand même, `/api/me` renvoie `ia:false` et le bloc disparaît de l'appli.
-- Une clé se crée sur console.anthropic.com (facturation à l'usage, quelques centimes par recap).
+## IA (recap + coach)
+Deux routes, même clé `ANTHROPIC_API_KEY`, même modèle `claude-opus-5` :
+- `POST /api/recap` : chiffres d'une sortie → `{phrases:[3], legende}` pour la story (effort `low`, sortie JSON validée avec zod).
+- `POST /api/coach` : les 10 dernières sorties + la conversation → `{reponse}` (effort `medium`). Le coach analyse la régularité, le volume, l'allure et le dénivelé, dit ce qu'il faut améliorer, et renvoie vers un médecin dès qu'il est question de douleur ou de blessure.
+
+Points communs :
+- Le serveur ne transmet jamais le texte du navigateur tel quel : `chiffres()` reconstruit des données propres, `ficheActivite()` et `carnet()` les mettent en forme, nom/lieu/date sont tronqués.
+- `conversation()` ne garde que des tours `user`/`assistant` valides, 20 maximum, et impose que le dernier vienne du sportif.
+- Garde-fou coût : 40 appels IA par heure et par adresse IP, tous types confondus (`quotas` en mémoire).
+- Sans `ANTHROPIC_API_KEY`, le serveur démarre quand même, `/api/me` renvoie `ia:false`, et le bloc recap comme le bouton coach disparaissent.
+- Une clé se crée sur console.anthropic.com (facturation à l'usage). Si elle est refusée, les logs Render affichent « Clé ANTHROPIC_API_KEY refusée ».
+
+Le coach ne voit que les totaux : ni fréquence cardiaque, ni détail kilomètre par kilomètre, et il oublie tout d'une visite à l'autre (pas de base de données). Suite prévue : cardio et splits via `/api/v3/activities/{id}/streams` (Strava), puis un historique gardé côté serveur.
 
 ## Tester en local
 ```

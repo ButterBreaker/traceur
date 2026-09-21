@@ -446,6 +446,24 @@
   .ia-phrase:hover{border-color:var(--accent);}
   .ia-legende{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin:0;font-size:12.5px;line-height:1.55;color:var(--text);}
   .ia-err{font-size:12px;color:var(--danger);margin:0;}
+
+  .coach-btn{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:6px;color:var(--text);font-family:inherit;cursor:pointer;}
+  .coach-btn:hover{border-color:var(--accent);}
+  .coach-btn .ico{width:38px;height:38px;flex:none;display:grid;place-items:center;background:var(--surface-2);border-radius:11px;font-size:19px;}
+  .coach-btn .txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;}
+  .coach-btn b{font-size:14px;}
+  .coach-btn em{font-style:normal;font-size:11.5px;color:var(--text-dim);line-height:1.4;}
+  .coach-btn .go{color:var(--text-dim);font-size:16px;}
+  .coach-log{display:flex;flex-direction:column;gap:10px;padding:6px 0 10px;}
+  .bulle{max-width:88%;padding:11px 13px;border-radius:15px;font-size:13.5px;line-height:1.6;white-space:pre-wrap;}
+  .bulle.coach{background:var(--surface);border:1px solid var(--line);align-self:flex-start;border-bottom-left-radius:5px;}
+  .bulle.moi{background:var(--surface-2);align-self:flex-end;border-bottom-right-radius:5px;}
+  .bulle.attente{color:var(--text-dim);align-self:flex-start;}
+  .coach-bar{position:sticky;bottom:0;margin-top:auto;display:flex;gap:8px;padding:10px 0 calc(env(safe-area-inset-bottom,0px) + 12px);background:linear-gradient(rgba(14,14,16,0), var(--bg) 35%);}
+  .coach-bar input{flex:1;min-width:0;background:var(--surface-2);border:1px solid var(--line);color:var(--text);border-radius:12px;padding:12px 13px;font-family:inherit;font-size:14px;}
+  .coach-send{flex:none;width:46px;border:none;border-radius:12px;background:var(--accent);color:#1a1108;font-size:18px;font-weight:700;cursor:pointer;}
+  .coach-send:disabled{opacity:.45;cursor:default;}
+  #screen-coach{padding-bottom:0;}
   .font-chip{font-size:15px !important;}
   .save-bar{position:sticky;bottom:0;padding:12px 0 calc(env(safe-area-inset-bottom,0px) + 12px);background:linear-gradient(rgba(14,14,16,0), var(--bg) 35%);margin-top:auto;z-index:4;}
   .save-bar .btn{width:100%;margin-top:0;}
@@ -500,10 +518,32 @@
       <button class="link-btn" id="refresh-btn">Actualiser</button><button class="logout-btn" id="logout-btn">Déconnexion</button>
     </div>
 
+    <button class="coach-btn" id="coach-btn" hidden>
+      <span class="ico">💬</span>
+      <span class="txt">
+        <b>Mon coach</b>
+        <em>Ce qui va, ce qu'il faut améliorer, et quoi faire à la prochaine sortie</em>
+      </span>
+      <span class="go">→</span>
+    </button>
+
     <div class="section-label">Sorties récentes</div>
     <div class="activity-list" id="activity-list"></div>
 
     <div class="empty-note">Touche une sortie pour générer sa story.</div>
+  </div>
+
+  <!-- ===== ÉCRAN 3 : coach ===== -->
+  <div class="screen" id="screen-coach">
+    <div class="topbar">
+      <button class="back-btn" id="coach-back" aria-label="Retour aux sorties">←</button>
+      <h1>Mon coach</h1>
+    </div>
+    <div class="coach-log" id="coach-log"></div>
+    <div class="coach-bar">
+      <input type="text" id="coach-input" placeholder="Pose ta question…" maxlength="500" autocomplete="off">
+      <button class="coach-send" id="coach-send" aria-label="Envoyer">→</button>
+    </div>
   </div>
 
   <!-- ===== ÉCRAN 2 : éditeur de story ===== -->
@@ -683,7 +723,8 @@
     guides: null,
     tab: "presets",
     iaDispo: false,
-    recap: {loading:false, phrases:[], legende:"", error:null}
+    recap: {loading:false, phrases:[], legende:"", error:null},
+    coach: {messages:[], loading:false, error:null, demarre:false}
   };
   var uid = 0;
   function nid(p){ return p + "-" + Date.now().toString(36) + "-" + (++uid); }
@@ -1341,11 +1382,21 @@
   }
   // ---------- texte écrit par l'IA ----------
   var ERREURS_IA = {
-    ia_desactivee: "Le recap IA n'est pas activé sur le serveur.",
-    trop_de_demandes: "Trop de recaps demandés, réessaie dans un moment.",
-    sortie_invalide: "Cette sortie n'a pas assez de chiffres pour un recap.",
+    ia_desactivee: "L'IA n'est pas activée sur le serveur.",
+    trop_de_demandes: "Trop de demandes d'un coup, réessaie dans un moment.",
+    sortie_invalide: "Cette sortie n'a pas assez de chiffres.",
+    pas_de_sorties: "Aucune sortie à analyser pour le moment.",
+    message_vide: "Écris ta question avant d'envoyer.",
     ia_indisponible: "L'IA ne répond pas, réessaie dans un instant."
   };
+
+  function donneesSortie(a){
+    return {
+      sport:a.sport, name:a.name, location:a.location, date:a.date,
+      distance_m:a.distance_m, moving_time_s:a.moving_time_s,
+      elevation_gain_m:a.elevation_gain_m, calories:a.calories
+    };
+  }
 
   async function demanderRecap(){
     if(state.recap.loading) return;
@@ -1356,11 +1407,7 @@
       var r = await fetch("/api/recap", {
         method:"POST", credentials:"same-origin",
         headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({
-          sport:a.sport, name:a.name, location:a.location, date:a.date,
-          distance_m:a.distance_m, moving_time_s:a.moving_time_s,
-          elevation_gain_m:a.elevation_gain_m, calories:a.calories
-        })
+        body:JSON.stringify(donneesSortie(a))
       });
       var data = await r.json().catch(function(){ return {}; });
       if(!r.ok) throw new Error(data.error || "ia_indisponible");
@@ -1812,6 +1859,71 @@
 
   $("back-btn").addEventListener("click", function(){ state.selectedId = null; showScreen("screen-home"); });
 
+  // ---------------------------------------------------------------
+  // Coach
+  // ---------------------------------------------------------------
+  var coachLog = $("coach-log"), coachInput = $("coach-input"), coachSend = $("coach-send"), coachBtn = $("coach-btn");
+  var PREMIERE_QUESTION = "Regarde mes dernières sorties : qu'est-ce qui va, qu'est-ce que je dois améliorer ?";
+
+  function dessinerCoach(){
+    coachLog.innerHTML = "";
+    state.coach.messages.forEach(function(m){
+      coachLog.appendChild(el("div", {class:"bulle " + (m.role === "user" ? "moi" : "coach"), text:m.content}));
+    });
+    if(state.coach.loading) coachLog.appendChild(el("div", {class:"bulle coach attente", text:"Le coach regarde ton carnet…"}));
+    if(state.coach.error){
+      coachLog.appendChild(el("p", {class:"ia-err", text:state.coach.error}));
+      coachLog.appendChild(el("div", {class:"actions"}, [btn("Réessayer", appelCoach)]));
+    }
+    coachSend.disabled = state.coach.loading;
+    window.scrollTo(0, document.body.scrollHeight);
+  }
+
+  async function appelCoach(){
+    if(state.coach.loading) return;
+    state.coach.loading = true; state.coach.error = null;
+    dessinerCoach();
+    try{
+      var r = await fetch("/api/coach", {
+        method:"POST", credentials:"same-origin",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          activities: state.activities.map(donneesSortie),
+          messages: state.coach.messages
+        })
+      });
+      var data = await r.json().catch(function(){ return {}; });
+      if(!r.ok) throw new Error(data.error || "ia_indisponible");
+      state.coach.messages.push({role:"assistant", content:data.reponse});
+    }catch(e){
+      state.coach.error = ERREURS_IA[e.message] || ERREURS_IA.ia_indisponible;
+    }
+    state.coach.loading = false;
+    dessinerCoach();
+  }
+
+  function envoyerCoach(txt){
+    txt = (txt || "").trim();
+    if(!txt || state.coach.loading) return;
+    state.coach.messages.push({role:"user", content:txt});
+    appelCoach();
+  }
+
+  function ouvrirCoach(){
+    showScreen("screen-coach");
+    if(!state.coach.demarre){
+      state.coach.demarre = true;
+      envoyerCoach(PREMIERE_QUESTION);
+    } else dessinerCoach();
+  }
+
+  coachBtn.addEventListener("click", ouvrirCoach);
+  $("coach-back").addEventListener("click", function(){ showScreen("screen-home"); });
+  coachSend.addEventListener("click", function(){ envoyerCoach(coachInput.value); coachInput.value = ""; });
+  coachInput.addEventListener("keydown", function(e){
+    if(e.key === "Enter"){ e.preventDefault(); envoyerCoach(coachInput.value); coachInput.value = ""; }
+  });
+
   var ERREURS = {
     refus: "Connexion Strava annulée.",
     token: "Strava a refusé la connexion — réessaie.",
@@ -1872,6 +1984,7 @@
     var me = {connected:false};
     try{ me = await (await fetch("/api/me", {credentials:"same-origin"})).json(); }catch(e){}
     state.iaDispo = !!me.ia;
+    coachBtn.hidden = !state.iaDispo;
     if(me.connected){
       state.athleteName = me.firstname || "Athlète";
       state.connectStatus = "connected";
@@ -1888,6 +2001,7 @@
   connectBtn.addEventListener("click", goStrava);
   $("demo-btn").addEventListener("click", function(){
     state.activities = DEMO_ACTIVITIES.slice();
+    state.coach = {messages:[], loading:false, error:null, demarre:false};
     buildList(); setAccountUI();
     showScreen("screen-home");
   });
@@ -1896,6 +2010,7 @@
     await fetch("/auth/logout", {method:"POST", credentials:"same-origin"});
     state.connectStatus = "idle"; state.athleteName = null;
     state.activities = DEMO_ACTIVITIES.slice();
+    state.coach = {messages:[], loading:false, error:null, demarre:false};
     buildList(); setAccountUI();
     await showLogin();
     toast("Déconnecté");
