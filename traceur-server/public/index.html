@@ -85,6 +85,8 @@
     border-radius:999px;
     white-space:nowrap;
   }
+  .account-chip.clickable{cursor:pointer;}
+  .account-chip.clickable:hover{border-color:var(--accent);}
   .avatar{
     width:22px;height:22px;border-radius:50%;
     background:linear-gradient(135deg,var(--accent),var(--accent-2));
@@ -475,6 +477,10 @@
 
   /* ---------- bilan d'une sortie ---------- */
   #screen-bilan{padding-bottom:0;}
+  #screen-profil{padding-bottom:0;}
+  .profil-record{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:10px;}
+  .profil-record b{display:block;font-size:13.5px;margin-bottom:2px;}
+  .profil-record span{font-size:12px;color:var(--text-dim);}
   .bilan-route-wrap{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:8px;margin:4px 0 16px;}
   .bilan-route-wrap canvas{width:100%;height:auto;display:block;border-radius:10px;}
   .bilan-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:18px;}
@@ -502,20 +508,39 @@
   .objectif-card b{font-size:14px;}
   .objectif-card span{font-size:12px;color:var(--text-dim);}
   .objectif-course{display:flex;flex-direction:column;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px;}
-  .objectif-course input{background:var(--surface-2);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:10px 12px;font-family:inherit;font-size:14px;}
+  .objectif-course input{background:var(--surface-2);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:10px 12px;font-family:inherit;font-size:14px;width:100%;}
+  .objectif-course-row{display:flex;gap:10px;}
+  .objectif-course-row input{min-width:0;}
+  .objectif-course .note{margin:0;}
 
   /* ---------- plan d'entraînement ---------- */
   .plan-liste{display:flex;flex-direction:column;gap:10px;padding-bottom:20px;}
-  .plan-row{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;}
-  .plan-row.today{border-color:var(--accent);}
-  .plan-row-date b{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-dim);}
-  .plan-row-body{margin-top:4px;}
-  .plan-type{display:inline-block;font-size:11px;font-weight:700;padding:3px 8px;border-radius:7px;background:var(--surface-2);margin-bottom:4px;}
+  .plan-semaine-titre{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);font-weight:700;margin:16px 0 2px;}
+  .plan-semaine-titre:first-child{margin-top:4px;}
+  .plan-row{display:flex;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;}
+  .plan-row.today{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;}
+  .plan-row-icon{flex:none;width:38px;height:38px;border-radius:11px;display:grid;place-items:center;font-size:18px;background:var(--surface-2);}
+  .plan-row-main{flex:1;min-width:0;}
+  .plan-row-date{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-dim);font-weight:700;}
+  .plan-row-body{margin-top:2px;}
+  .plan-type{display:inline-block;font-size:11px;font-weight:700;padding:2px 0;margin-bottom:2px;}
   .plan-row-body p{margin:0;font-size:13.5px;}
   .plan-row-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
   .plan-row-actions .mini-btn.on{border-color:var(--accent);color:var(--accent-2);}
   .plan-pick{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
   .plan-pick .mini-btn{flex:0 0 auto;}
+  .plan-type-repos{color:var(--text-dim);}
+  .plan-type-facile{color:var(--ok);}
+  .plan-type-fractionne{color:var(--danger);}
+  .plan-type-longue{color:var(--accent-2);}
+  .plan-type-velo{color:#4d9bff;}
+  .plan-type-renfo{color:#b18bfa;}
+  .plan-row-icon.icone-repos{background:rgba(152,147,154,.14);}
+  .plan-row-icon.icone-facile{background:rgba(55,214,122,.14);}
+  .plan-row-icon.icone-fractionne{background:rgba(255,84,112,.14);}
+  .plan-row-icon.icone-longue{background:rgba(255,178,44,.14);}
+  .plan-row-icon.icone-velo{background:rgba(77,155,255,.14);}
+  .plan-row-icon.icone-renfo{background:rgba(177,139,250,.14);}
 </style>
 </head>
 <body>
@@ -612,6 +637,18 @@
     </div>
   </div>
 
+  <!-- ===== PROFIL ===== -->
+  <div class="screen" id="screen-profil">
+    <div class="topbar">
+      <button class="back-btn" id="profil-back" aria-label="Retour à l'accueil">←</button>
+      <h1 id="profil-titre">Profil</h1>
+    </div>
+    <p class="panel-title" id="profil-fenetre"></p>
+    <div class="bilan-grid" id="profil-grid"></div>
+    <div id="profil-records"></div>
+    <div class="save-bar"><button class="btn btn-primary" id="profil-objectif-btn">Modifier mon objectif</button></div>
+  </div>
+
   <!-- ===== OBJECTIF ===== -->
   <div class="screen" id="screen-objectif">
     <div class="topbar">
@@ -623,6 +660,11 @@
     <div class="objectif-course" id="objectif-course" hidden>
       <input type="text" id="objectif-nom" placeholder="Nom de la course ou de l'événement (optionnel)" maxlength="80">
       <input type="date" id="objectif-date">
+      <div class="objectif-course-row">
+        <input type="number" id="objectif-km" placeholder="Distance (km)" min="0" step="0.1" inputmode="decimal">
+        <input type="number" id="objectif-denivele" placeholder="D+ (m, optionnel)" min="0" step="10" inputmode="numeric">
+      </div>
+      <p class="note">La distance aide le coach à faire progresser tes sorties longues vers cet objectif, sans les laisser trop courtes ni trop ambitieuses.</p>
       <button class="btn btn-primary" id="objectif-course-valider">Valider</button>
     </div>
     <button class="demo-link" id="objectif-plus-tard">Plus tard, je déciderai</button>
@@ -741,6 +783,7 @@
   var JOURS_FR = ["dim.","lun.","mar.","mer.","jeu.","ven.","sam."];
   var TYPES_SEANCE_ORDRE = ["repos","facile","fractionne","longue","velo","renfo"];
   var LABEL_SEANCE_FR = {repos:"Repos", facile:"Sortie facile", fractionne:"Fractionné", longue:"Sortie longue", velo:"Vélo / VTT", renfo:"Renforcement"};
+  var ICONE_SEANCE = {repos:"😴", facile:"🏃", fractionne:"⚡", longue:"🏔️", velo:"🚴", renfo:"🏋️"};
   var OBJECTIF_OPTIONS = [
     {type:"forme", label:"Mise en forme", detail:"Rester actif, sans objectif de performance."},
     {type:"progresser", label:"Progresser", detail:"Gagner en endurance ou en vitesse."},
@@ -1297,7 +1340,7 @@
   // ---------------------------------------------------------------
   var $ = function(id){ return document.getElementById(id); };
   var listEl = $("activity-list"), editCanvas = $("edit-canvas"), storyTitle = $("story-title");
-  var toastEl = $("toast"), accountDot = $("account-dot"), accountLabel = $("account-label");
+  var toastEl = $("toast"), accountDot = $("account-dot"), accountLabel = $("account-label"), accountChip = $("account-chip");
   var connectPanel = $("connect-panel"), connectBtn = $("connect-btn"), connectedRow = $("connected-row");
   var connectedLabel = $("connected-label"), refreshBtn = $("refresh-btn"), undoBtn = $("undo-btn");
   var inspectorEl = $("inspector"), tabPanel = $("tab-panel"), photoInput = $("photo-input");
@@ -1935,6 +1978,7 @@
   // Écran liste + connexion
   // ---------------------------------------------------------------
   function setAccountUI(){
+    accountChip.classList.toggle("clickable", state.connectStatus === "connected");
     if(state.connectStatus === "connected"){
       accountDot.className = "dot ok";
       accountLabel.textContent = "Strava · " + (state.athleteName || "Connecté");
@@ -2280,32 +2324,84 @@
       [el("b", {text:"Objectif précis"}), el("span", {text:"Une course, un événement, avec ou sans date."})]));
   }
 
-  async function validerObjectif(type, description, dateCible){
-    state.objectif = {type:type, description:description, date_cible:dateCible};
+  async function validerObjectif(type, description, dateCible, distanceKm, deniveleM){
+    state.objectif = {type:type, description:description, date_cible:dateCible, distance_km:distanceKm, denivele_m:deniveleM};
     try{
       await fetch("/api/objectif", {method:"POST", credentials:"same-origin", headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({type:type, description:description, date_cible:dateCible})});
+        body:JSON.stringify({type:type, description:description, date_cible:dateCible, distance_km:distanceKm, denivele_m:deniveleM})});
     }catch(e){}
     majBanniereObjectif();
-    showScreen("screen-home");
+    showScreen(ecranPrecedentObjectif === "screen-profil" ? "screen-profil" : "screen-home");
     chargerPlan();
   }
 
-  function ouvrirObjectif(premiereFois){
+  var ecranPrecedentObjectif = "screen-home";
+  function ouvrirObjectif(premiereFois, retourVers){
+    ecranPrecedentObjectif = retourVers || "screen-home";
     objectifBackBtn.hidden = !!premiereFois;
     construireListeObjectif();
     objectifCourseEl.hidden = true;
     $("objectif-nom").value = ""; $("objectif-date").value = "";
+    $("objectif-km").value = ""; $("objectif-denivele").value = "";
     showScreen("screen-objectif");
   }
 
-  objectifBackBtn.addEventListener("click", function(){ showScreen("screen-home"); });
+  objectifBackBtn.addEventListener("click", function(){ showScreen(ecranPrecedentObjectif); });
   $("objectif-rappel-btn").addEventListener("click", function(){ ouvrirObjectif(false); });
-  $("objectif-plus-tard").addEventListener("click", function(){ validerObjectif("aucun", "", null); });
+  $("objectif-plus-tard").addEventListener("click", function(){ validerObjectif("aucun", "", null, null, null); });
   $("objectif-course-valider").addEventListener("click", function(){
     var nom = $("objectif-nom").value.trim(), date = $("objectif-date").value || null;
-    validerObjectif(date ? "course" : "libre", nom, date);
+    var km = parseFloat($("objectif-km").value) || null;
+    var denivele = parseInt($("objectif-denivele").value, 10);
+    denivele = Number.isFinite(denivele) ? denivele : null;
+    validerObjectif((date || km) ? "course" : "libre", nom, date, km, denivele);
   });
+
+  // ---------------------------------------------------------------
+  // Profil (touche son pseudo)
+  // ---------------------------------------------------------------
+  function formatAllureSecKm(sec){
+    return Math.floor(sec/60) + ":" + String(Math.round(sec%60)).padStart(2,"0") + "/km";
+  }
+
+  async function ouvrirProfil(){
+    showScreen("screen-profil");
+    $("profil-titre").textContent = state.athleteName || "Profil";
+    $("profil-grid").innerHTML = "";
+    $("profil-records").innerHTML = "";
+    $("profil-fenetre").textContent = "Chargement…";
+    try{
+      var r = await fetch("/api/profil", {credentials:"same-origin"});
+      var data = await r.json().catch(function(){ return {}; });
+      if(!r.ok || !data.totaux){ $("profil-fenetre").textContent = "Statistiques indisponibles pour le moment."; return; }
+      $("profil-fenetre").textContent = "Sur les " + data.fenetreJours + " derniers jours";
+      var grid = $("profil-grid");
+      grid.appendChild(bilanStat("Sorties", String(data.totaux.seances)));
+      grid.appendChild(bilanStat("Distance", data.totaux.km.toFixed(1) + " km"));
+      grid.appendChild(bilanStat("Dénivelé", Math.round(data.totaux.denivele) + " m"));
+      if(data.profil){
+        grid.appendChild(bilanStat("Terrain", data.profil.dominante === "trail" ? "Trail" : "Route"));
+        grid.appendChild(bilanStat("D+ moyen", data.profil.deniveleParKm + " m/km"));
+      }
+      var recEl = $("profil-records");
+      Object.keys(data.records || {}).forEach(function(sport){
+        var rec = data.records[sport], bouts = [];
+        if(rec.distanceMax) bouts.push((rec.distanceMax/1000).toFixed(2) + " km max");
+        if(rec.meilleureAllureSecKm) bouts.push(formatAllureSecKm(rec.meilleureAllureSecKm) + " record");
+        if(rec.deniveleMax) bouts.push(Math.round(rec.deniveleMax) + " m D+ max");
+        recEl.appendChild(el("div", {class:"profil-record"}, [
+          el("b", {text:SPORT_LABEL[sport] || sport}),
+          el("span", {text:bouts.join(" · ")})
+        ]));
+      });
+    }catch(e){
+      $("profil-fenetre").textContent = "Statistiques indisponibles pour le moment.";
+    }
+  }
+
+  accountChip.addEventListener("click", function(){ if(state.connectStatus === "connected") ouvrirProfil(); });
+  $("profil-back").addEventListener("click", function(){ showScreen("screen-home"); });
+  $("profil-objectif-btn").addEventListener("click", function(){ ouvrirObjectif(false, "screen-profil"); });
 
   // ---------------------------------------------------------------
   // Plan d'entraînement (2 semaines)
@@ -2372,19 +2468,27 @@
     }
     planNoteEl.hidden = true;
     var aujourdHui = dateISOAujourdHui();
-    joursPlan.forEach(function(j){
+    joursPlan.forEach(function(j, i){
+      if(i === 0) planListeEl.appendChild(el("p", {class:"plan-semaine-titre", text:"Cette semaine"}));
+      else if(i === 7) planListeEl.appendChild(el("p", {class:"plan-semaine-titre", text:"Semaine prochaine"}));
+
       var estAVenir = j.jour >= aujourdHui;
-      var ligne = el("div", {class:"plan-row" + (j.jour === aujourdHui ? " today" : "")});
-      ligne.appendChild(el("div", {class:"plan-row-date"}, [el("b", {text:labelJourRelatif(j.jour) + (j.fixe ? " · fixé par toi" : "")})]));
-      ligne.appendChild(el("div", {class:"plan-row-body"}, [
-        el("span", {class:"plan-type", text:LABEL_SEANCE_FR[j.type]}),
+      var main = el("div", {class:"plan-row-main"});
+      main.appendChild(el("div", {class:"plan-row-date", text:labelJourRelatif(j.jour) + (j.fixe ? " · fixé par toi" : "")}));
+      main.appendChild(el("div", {class:"plan-row-body"}, [
+        el("span", {class:"plan-type plan-type-" + j.type, text:LABEL_SEANCE_FR[j.type]}),
         el("p", {text:j.description})
       ]));
       var actions = el("div", {class:"plan-row-actions"});
       actions.appendChild(planBtn(j.statut === "fait" ? "✓ Fait" : "Marquer fait", function(){ majStatutPlan(j.jour, "fait"); }, j.statut === "fait" ? "on" : ""));
       actions.appendChild(planBtn(j.statut === "manque" ? "✗ Manqué" : "Manqué", function(){ majStatutPlan(j.jour, "manque"); }, j.statut === "manque" ? "on" : ""));
-      if(estAVenir) actions.appendChild(planBtn("Changer →", function(){ ouvrirChoixTypePlan(j, ligne); }));
-      ligne.appendChild(actions);
+      if(estAVenir) actions.appendChild(planBtn("Changer →", function(){ ouvrirChoixTypePlan(j, main); }));
+      main.appendChild(actions);
+
+      var ligne = el("div", {class:"plan-row" + (j.jour === aujourdHui ? " today" : "")}, [
+        el("div", {class:"plan-row-icon icone-" + j.type, text:ICONE_SEANCE[j.type]}),
+        main
+      ]);
       planListeEl.appendChild(ligne);
     });
   }
