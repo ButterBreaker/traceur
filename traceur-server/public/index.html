@@ -492,6 +492,30 @@
   .bilan-coach .chev{margin-left:auto;color:var(--text-dim);transition:transform .15s;}
   .bilan-coach[open] .chev{transform:rotate(180deg);}
   .bilan-coach p{margin:10px 0 0;font-size:13px;line-height:1.5;color:var(--text);}
+
+  /* ---------- objectif ---------- */
+  .objectif-rappel{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:14px;font-size:13px;}
+  .objectif-rappel .link-btn{margin-left:auto;}
+  .objectif-liste{display:flex;flex-direction:column;gap:10px;margin:14px 0;}
+  .objectif-card{text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;color:var(--text);font-family:inherit;cursor:pointer;display:flex;flex-direction:column;gap:3px;}
+  .objectif-card:hover{border-color:var(--accent);}
+  .objectif-card b{font-size:14px;}
+  .objectif-card span{font-size:12px;color:var(--text-dim);}
+  .objectif-course{display:flex;flex-direction:column;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px;}
+  .objectif-course input{background:var(--surface-2);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:10px 12px;font-family:inherit;font-size:14px;}
+
+  /* ---------- plan d'entraînement ---------- */
+  .plan-liste{display:flex;flex-direction:column;gap:10px;padding-bottom:20px;}
+  .plan-row{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;}
+  .plan-row.today{border-color:var(--accent);}
+  .plan-row-date b{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-dim);}
+  .plan-row-body{margin-top:4px;}
+  .plan-type{display:inline-block;font-size:11px;font-weight:700;padding:3px 8px;border-radius:7px;background:var(--surface-2);margin-bottom:4px;}
+  .plan-row-body p{margin:0;font-size:13.5px;}
+  .plan-row-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+  .plan-row-actions .mini-btn.on{border-color:var(--accent);color:var(--accent-2);}
+  .plan-pick{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+  .plan-pick .mini-btn{flex:0 0 auto;}
 </style>
 </head>
 <body>
@@ -542,6 +566,11 @@
       <button class="link-btn" id="refresh-btn">Actualiser</button><button class="logout-btn" id="logout-btn">Déconnexion</button>
     </div>
 
+    <div class="objectif-rappel" id="objectif-rappel" hidden>
+      <span>Pas d'objectif précis pour l'instant.</span>
+      <button class="link-btn" id="objectif-rappel-btn">Choisir un objectif →</button>
+    </div>
+
     <div class="coach-hero" id="coach-hero" hidden>
       <div class="coach-hero-top">
         <span class="ico">💬</span>
@@ -550,6 +579,15 @@
       </div>
       <p class="coach-hero-text" id="coach-hero-text">Ce qui va, ce qu'il faut améliorer, et quoi faire à la prochaine sortie.</p>
       <button class="btn btn-primary" id="coach-btn">Parler à mon coach</button>
+    </div>
+
+    <div class="coach-hero" id="plan-hero" hidden>
+      <div class="coach-hero-top">
+        <span class="ico">📅</span>
+        <b>Mon plan</b>
+      </div>
+      <p class="coach-hero-text" id="plan-hero-texte">Chargement…</p>
+      <button class="btn btn-primary" id="plan-hero-btn">Voir les 2 semaines</button>
     </div>
 
     <div class="story-section-head">
@@ -572,6 +610,32 @@
       <input type="text" id="coach-input" placeholder="Pose ta question…" maxlength="500" autocomplete="off">
       <button class="coach-send" id="coach-send" aria-label="Envoyer">→</button>
     </div>
+  </div>
+
+  <!-- ===== OBJECTIF ===== -->
+  <div class="screen" id="screen-objectif">
+    <div class="topbar">
+      <button class="back-btn" id="objectif-back" aria-label="Retour" hidden>←</button>
+      <h1>Ton objectif</h1>
+    </div>
+    <p class="note">Pas obligé d'avoir un objectif précis — ça aide juste le coach à mieux adapter ton plan. Tu pourras toujours en changer plus tard.</p>
+    <div class="objectif-liste" id="objectif-liste"></div>
+    <div class="objectif-course" id="objectif-course" hidden>
+      <input type="text" id="objectif-nom" placeholder="Nom de la course ou de l'événement (optionnel)" maxlength="80">
+      <input type="date" id="objectif-date">
+      <button class="btn btn-primary" id="objectif-course-valider">Valider</button>
+    </div>
+    <button class="demo-link" id="objectif-plus-tard">Plus tard, je déciderai</button>
+  </div>
+
+  <!-- ===== PLAN D'ENTRAÎNEMENT ===== -->
+  <div class="screen" id="screen-plan">
+    <div class="topbar">
+      <button class="back-btn" id="plan-back" aria-label="Retour à l'accueil">←</button>
+      <h1>Mon plan</h1>
+    </div>
+    <p class="note" id="plan-note" hidden></p>
+    <div class="plan-liste" id="plan-liste"></div>
   </div>
 
   <!-- ===== BILAN D'UNE SORTIE ===== -->
@@ -674,6 +738,15 @@
   var SPORT_LABEL = {Run:"COURSE À PIED", TrailRun:"TRAIL", Ride:"VÉLO", Workout:"SÉANCE", Hike:"RANDONNÉE", Walk:"MARCHE", GravelRide:"GRAVEL", MountainBikeRide:"VTT"};
   var SPORT_ICON  = {Run:"🏃", TrailRun:"⛰️", Ride:"🚴", Workout:"🏋️", Hike:"🥾", Walk:"🚶", GravelRide:"🚴", MountainBikeRide:"🚵"};
   var MONTHS_FR = ["janv.","févr.","mars","avr.","mai","juin","juil.","août","sept.","oct.","nov.","déc."];
+  var JOURS_FR = ["dim.","lun.","mar.","mer.","jeu.","ven.","sam."];
+  var TYPES_SEANCE_ORDRE = ["repos","facile","fractionne","longue","velo","renfo"];
+  var LABEL_SEANCE_FR = {repos:"Repos", facile:"Sortie facile", fractionne:"Fractionné", longue:"Sortie longue", velo:"Vélo / VTT", renfo:"Renforcement"};
+  var OBJECTIF_OPTIONS = [
+    {type:"forme", label:"Mise en forme", detail:"Rester actif, sans objectif de performance."},
+    {type:"progresser", label:"Progresser", detail:"Gagner en endurance ou en vitesse."},
+    {type:"poids", label:"Perte de poids / s'affiner", detail:"Priorité au volume et à la régularité."},
+    {type:"reprise", label:"Reprise en douceur", detail:"Retour de blessure ou de pause, progression prudente."}
+  ];
 
   var PALETTES = [
     {name:"Ambre",   a:"#ff6a2e", b:"#ffb22c"},
@@ -784,7 +857,8 @@
     iaDispo: false,
     recap: {loading:false, phrases:[], legende:"", error:null},
     coach: {messages:[], loading:false, error:null, demarre:false},
-    bilan: {loading:false, chart:null, curseur:null}
+    bilan: {loading:false, chart:null, curseur:null},
+    objectif: null
   };
   var uid = 0;
   function nid(p){ return p + "-" + Date.now().toString(36) + "-" + (++uid); }
@@ -2186,6 +2260,138 @@
     if(e.key === "Enter"){ e.preventDefault(); envoyerCoach(coachInput.value); coachInput.value = ""; }
   });
 
+  // ---------------------------------------------------------------
+  // Objectif
+  // ---------------------------------------------------------------
+  var objectifRappelEl = $("objectif-rappel"), objectifListeEl = $("objectif-liste"), objectifCourseEl = $("objectif-course");
+  var objectifBackBtn = $("objectif-back");
+
+  function majBanniereObjectif(){
+    objectifRappelEl.hidden = !(state.objectif && state.objectif.type === "aucun");
+  }
+
+  function construireListeObjectif(){
+    objectifListeEl.innerHTML = "";
+    OBJECTIF_OPTIONS.forEach(function(o){
+      objectifListeEl.appendChild(el("button", {type:"button", class:"objectif-card", onclick:function(){ validerObjectif(o.type, "", null); }},
+        [el("b", {text:o.label}), el("span", {text:o.detail})]));
+    });
+    objectifListeEl.appendChild(el("button", {type:"button", class:"objectif-card", onclick:function(){ objectifCourseEl.hidden = false; }},
+      [el("b", {text:"Objectif précis"}), el("span", {text:"Une course, un événement, avec ou sans date."})]));
+  }
+
+  async function validerObjectif(type, description, dateCible){
+    state.objectif = {type:type, description:description, date_cible:dateCible};
+    try{
+      await fetch("/api/objectif", {method:"POST", credentials:"same-origin", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({type:type, description:description, date_cible:dateCible})});
+    }catch(e){}
+    majBanniereObjectif();
+    showScreen("screen-home");
+    chargerPlan();
+  }
+
+  function ouvrirObjectif(premiereFois){
+    objectifBackBtn.hidden = !!premiereFois;
+    construireListeObjectif();
+    objectifCourseEl.hidden = true;
+    $("objectif-nom").value = ""; $("objectif-date").value = "";
+    showScreen("screen-objectif");
+  }
+
+  objectifBackBtn.addEventListener("click", function(){ showScreen("screen-home"); });
+  $("objectif-rappel-btn").addEventListener("click", function(){ ouvrirObjectif(false); });
+  $("objectif-plus-tard").addEventListener("click", function(){ validerObjectif("aucun", "", null); });
+  $("objectif-course-valider").addEventListener("click", function(){
+    var nom = $("objectif-nom").value.trim(), date = $("objectif-date").value || null;
+    validerObjectif(date ? "course" : "libre", nom, date);
+  });
+
+  // ---------------------------------------------------------------
+  // Plan d'entraînement (2 semaines)
+  // ---------------------------------------------------------------
+  var planHeroEl = $("plan-hero"), planHeroTexteEl = $("plan-hero-texte"), planListeEl = $("plan-liste"), planNoteEl = $("plan-note");
+  var joursPlan = [];
+
+  function dateISOAujourdHui(){ return new Date().toISOString().slice(0,10); }
+  function labelJourRelatif(iso){
+    var diff = Math.round((new Date(iso+"T00:00:00Z") - new Date(dateISOAujourdHui()+"T00:00:00Z")) / 86400000);
+    if(diff === 0) return "Aujourd'hui";
+    if(diff === 1) return "Demain";
+    var d = new Date(iso+"T00:00:00Z");
+    return JOURS_FR[d.getUTCDay()] + " " + d.getUTCDate() + " " + MONTHS_FR[d.getUTCMonth()];
+  }
+
+  async function chargerPlan(){
+    if(!state.iaDispo || state.connectStatus !== "connected"){ planHeroEl.hidden = true; return; }
+    try{
+      var r = await fetch("/api/plan", {credentials:"same-origin"});
+      var data = await r.json().catch(function(){ return {jours:[]}; });
+      joursPlan = data.jours || [];
+    }catch(e){ joursPlan = []; }
+    dessinerPlanHero();
+    if($("screen-plan").classList.contains("active")) buildPlanListe();
+  }
+  function dessinerPlanHero(){
+    if(!joursPlan.length){ planHeroEl.hidden = true; return; }
+    planHeroEl.hidden = false;
+    var j = joursPlan[0];
+    planHeroTexteEl.textContent = labelJourRelatif(j.jour) + " : " + LABEL_SEANCE_FR[j.type] + " — " + j.description;
+  }
+
+  function planBtn(label, onclick, cls){ return el("button", {type:"button", class:"mini-btn" + (cls ? " " + cls : ""), text:label, onclick:onclick}); }
+
+  function ouvrirChoixTypePlan(j, ligne){
+    var existant = ligne.querySelector(".plan-pick");
+    if(existant){ existant.remove(); return; }
+    var pick = el("div", {class:"plan-pick"});
+    TYPES_SEANCE_ORDRE.forEach(function(t){
+      pick.appendChild(planBtn(LABEL_SEANCE_FR[t], function(){ changerTypePlan(j.jour, t); }, t === j.type ? "on" : ""));
+    });
+    ligne.appendChild(pick);
+  }
+  async function changerTypePlan(jour, type){
+    try{
+      await fetch("/api/plan/" + jour, {method:"POST", credentials:"same-origin", headers:{"Content-Type":"application/json"}, body:JSON.stringify({type:type})});
+    }catch(e){}
+    await chargerPlan();
+  }
+  async function majStatutPlan(jour, statut){
+    try{
+      await fetch("/api/plan/" + jour, {method:"POST", credentials:"same-origin", headers:{"Content-Type":"application/json"}, body:JSON.stringify({statut:statut})});
+    }catch(e){}
+    await chargerPlan();
+  }
+
+  function buildPlanListe(){
+    planListeEl.innerHTML = "";
+    if(!joursPlan.length){
+      planNoteEl.hidden = false;
+      planNoteEl.textContent = "Ton plan se prépare, reviens dans un instant.";
+      return;
+    }
+    planNoteEl.hidden = true;
+    var aujourdHui = dateISOAujourdHui();
+    joursPlan.forEach(function(j){
+      var estAVenir = j.jour >= aujourdHui;
+      var ligne = el("div", {class:"plan-row" + (j.jour === aujourdHui ? " today" : "")});
+      ligne.appendChild(el("div", {class:"plan-row-date"}, [el("b", {text:labelJourRelatif(j.jour) + (j.fixe ? " · fixé par toi" : "")})]));
+      ligne.appendChild(el("div", {class:"plan-row-body"}, [
+        el("span", {class:"plan-type", text:LABEL_SEANCE_FR[j.type]}),
+        el("p", {text:j.description})
+      ]));
+      var actions = el("div", {class:"plan-row-actions"});
+      actions.appendChild(planBtn(j.statut === "fait" ? "✓ Fait" : "Marquer fait", function(){ majStatutPlan(j.jour, "fait"); }, j.statut === "fait" ? "on" : ""));
+      actions.appendChild(planBtn(j.statut === "manque" ? "✗ Manqué" : "Manqué", function(){ majStatutPlan(j.jour, "manque"); }, j.statut === "manque" ? "on" : ""));
+      if(estAVenir) actions.appendChild(planBtn("Changer →", function(){ ouvrirChoixTypePlan(j, ligne); }));
+      ligne.appendChild(actions);
+      planListeEl.appendChild(ligne);
+    });
+  }
+
+  $("plan-hero-btn").addEventListener("click", function(){ buildPlanListe(); showScreen("screen-plan"); });
+  $("plan-back").addEventListener("click", function(){ showScreen("screen-home"); });
+
   var ERREURS = {
     refus: "Connexion Strava annulée.",
     token: "Strava a refusé la connexion — réessaie.",
@@ -2262,8 +2468,20 @@
           }
         }catch(e){}
       }
-      showScreen("screen-home");
+      if(state.iaDispo){
+        try{
+          var obj = await (await fetch("/api/objectif", {credentials:"same-origin"})).json();
+          state.objectif = obj.objectif;
+        }catch(e){}
+      }
+      if(state.iaDispo && !state.objectif){
+        ouvrirObjectif(true);
+      } else {
+        majBanniereObjectif();
+        showScreen("screen-home");
+      }
       await loadActivities();
+      chargerPlan();
     } else {
       await showLogin();
       if(err) toast(ERREURS[err] || "Connexion impossible");
@@ -2275,6 +2493,7 @@
   $("demo-btn").addEventListener("click", function(){
     state.activities = DEMO_ACTIVITIES.slice();
     state.coach = {messages:[], loading:false, error:null, demarre:false};
+    state.objectif = null; joursPlan = []; planHeroEl.hidden = true; objectifRappelEl.hidden = true;
     buildList(); setAccountUI(); dessinerCoachHero();
     showScreen("screen-home");
   });
@@ -2284,6 +2503,7 @@
     state.connectStatus = "idle"; state.athleteName = null;
     state.activities = DEMO_ACTIVITIES.slice();
     state.coach = {messages:[], loading:false, error:null, demarre:false};
+    state.objectif = null; joursPlan = []; planHeroEl.hidden = true; objectifRappelEl.hidden = true;
     buildList(); setAccountUI(); dessinerCoachHero();
     await showLogin();
     toast("Déconnecté");
