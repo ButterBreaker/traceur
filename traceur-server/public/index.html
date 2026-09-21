@@ -447,13 +447,17 @@
   .ia-legende{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin:0;font-size:12.5px;line-height:1.55;color:var(--text);}
   .ia-err{font-size:12px;color:var(--danger);margin:0;}
 
-  .coach-btn{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:6px;color:var(--text);font-family:inherit;cursor:pointer;}
-  .coach-btn:hover{border-color:var(--accent);}
-  .coach-btn .ico{width:38px;height:38px;flex:none;display:grid;place-items:center;background:var(--surface-2);border-radius:11px;font-size:19px;}
-  .coach-btn .txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;}
-  .coach-btn b{font-size:14px;}
-  .coach-btn em{font-style:normal;font-size:11.5px;color:var(--text-dim);line-height:1.4;}
-  .coach-btn .go{color:var(--text-dim);font-size:16px;}
+  .coach-hero{position:relative;overflow:hidden;background:linear-gradient(155deg, #2a1c14 0%, var(--surface) 55%);border:1px solid var(--line);border-radius:20px;padding:20px;margin-bottom:22px;}
+  .coach-hero::before{content:"";position:absolute;top:-40px;right:-40px;width:140px;height:140px;border-radius:50%;background:radial-gradient(circle, rgba(255,106,46,.35), transparent 70%);pointer-events:none;}
+  .coach-hero-top{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+  .coach-hero-top .ico{width:36px;height:36px;flex:none;display:grid;place-items:center;background:var(--surface-2);border-radius:11px;font-size:18px;}
+  .coach-hero-top b{font-size:15.5px;}
+  .coach-hero-top span.tag{margin-left:auto;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--accent-2);background:rgba(255,178,44,.12);border-radius:7px;padding:4px 8px;}
+  .coach-hero-text{position:relative;font-size:13.5px;line-height:1.55;color:var(--text-dim);margin:0 0 16px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+  .coach-hero .btn{margin-top:0;}
+  .story-section-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-top:6px;}
+  .story-section-head .section-label{margin:0;}
+  .story-section-note{font-size:11.5px;color:var(--text-dim);margin:2px 0 12px;}
   .coach-log{display:flex;flex-direction:column;gap:10px;padding:6px 0 10px;}
   .bulle{max-width:88%;padding:11px 13px;border-radius:15px;font-size:13.5px;line-height:1.6;white-space:pre-wrap;}
   .bulle.coach{background:var(--surface);border:1px solid var(--line);align-self:flex-start;border-bottom-left-radius:5px;}
@@ -518,16 +522,20 @@
       <button class="link-btn" id="refresh-btn">Actualiser</button><button class="logout-btn" id="logout-btn">Déconnexion</button>
     </div>
 
-    <button class="coach-btn" id="coach-btn" hidden>
-      <span class="ico">💬</span>
-      <span class="txt">
+    <div class="coach-hero" id="coach-hero" hidden>
+      <div class="coach-hero-top">
+        <span class="ico">💬</span>
         <b>Mon coach</b>
-        <em>Ce qui va, ce qu'il faut améliorer, et quoi faire à la prochaine sortie</em>
-      </span>
-      <span class="go">→</span>
-    </button>
+        <span class="tag" id="coach-hero-tag" hidden>Nouveau</span>
+      </div>
+      <p class="coach-hero-text" id="coach-hero-text">Ce qui va, ce qu'il faut améliorer, et quoi faire à la prochaine sortie.</p>
+      <button class="btn btn-primary" id="coach-btn">Parler à mon coach</button>
+    </div>
 
-    <div class="section-label">Sorties récentes</div>
+    <div class="story-section-head">
+      <div class="section-label">Créer une story</div>
+    </div>
+    <p class="story-section-note">Choisis une sortie pour la mettre en image et la partager.</p>
     <div class="activity-list" id="activity-list"></div>
 
     <div class="empty-note">Touche une sortie pour générer sa story.</div>
@@ -1863,7 +1871,21 @@
   // Coach
   // ---------------------------------------------------------------
   var coachLog = $("coach-log"), coachInput = $("coach-input"), coachSend = $("coach-send"), coachBtn = $("coach-btn");
+  var coachHero = $("coach-hero"), coachHeroText = $("coach-hero-text"), coachHeroTag = $("coach-hero-tag");
   var PREMIERE_QUESTION = "Regarde mes dernières sorties : qu'est-ce qui va, qu'est-ce que je dois améliorer ?";
+
+  function dessinerCoachHero(){
+    var c = state.coach, derniere = c.messages.length ? c.messages[c.messages.length - 1] : null;
+    if(derniere && derniere.role === "assistant"){
+      coachHeroText.textContent = derniere.content;
+      coachBtn.textContent = "Continuer la conversation";
+      coachHeroTag.hidden = false; coachHeroTag.textContent = "En cours";
+    } else {
+      coachHeroText.textContent = "Ce qui va, ce qu'il faut améliorer, et quoi faire à la prochaine sortie.";
+      coachBtn.textContent = "Parler à mon coach";
+      coachHeroTag.hidden = true;
+    }
+  }
 
   function dessinerCoach(){
     coachLog.innerHTML = "";
@@ -1877,6 +1899,7 @@
     }
     coachSend.disabled = state.coach.loading;
     window.scrollTo(0, document.body.scrollHeight);
+    dessinerCoachHero();
   }
 
   async function appelCoach(){
@@ -1984,7 +2007,8 @@
     var me = {connected:false};
     try{ me = await (await fetch("/api/me", {credentials:"same-origin"})).json(); }catch(e){}
     state.iaDispo = !!me.ia;
-    coachBtn.hidden = !state.iaDispo;
+    coachHero.hidden = !state.iaDispo;
+    dessinerCoachHero();
     if(me.connected){
       state.athleteName = me.firstname || "Athlète";
       state.connectStatus = "connected";
@@ -2002,7 +2026,7 @@
   $("demo-btn").addEventListener("click", function(){
     state.activities = DEMO_ACTIVITIES.slice();
     state.coach = {messages:[], loading:false, error:null, demarre:false};
-    buildList(); setAccountUI();
+    buildList(); setAccountUI(); dessinerCoachHero();
     showScreen("screen-home");
   });
   refreshBtn.addEventListener("click", function(){ loadActivities().then(function(){ toast("Sorties actualisées"); }); });
@@ -2011,7 +2035,7 @@
     state.connectStatus = "idle"; state.athleteName = null;
     state.activities = DEMO_ACTIVITIES.slice();
     state.coach = {messages:[], loading:false, error:null, demarre:false};
-    buildList(); setAccountUI();
+    buildList(); setAccountUI(); dessinerCoachHero();
     await showLogin();
     toast("Déconnecté");
   });

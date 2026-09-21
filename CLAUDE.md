@@ -14,7 +14,8 @@ parle-lui en français, simplement, sans jargon, avec des étapes concrètes. R�
 - `traceur-server/server.js` — Node/Express. Connexion Strava OAuth (`/auth/strava`, `/auth/callback`, `/auth/logout`), session en cookie signé (`cookie-session`, 30 jours), rafraîchissement auto du token, API `/api/me` et `/api/activities` (10 dernières sorties avec GPS, tracé en `summary_polyline`), et `/api/recap` (recap IA, voir plus bas).
 - `traceur-server/public/index.html` — tout le front en un seul fichier (HTML + CSS + JS vanilla, aucune lib) :
   - écran de chargement → page de connexion (bouton Strava + « Voir un exemple sans compte ») → liste des sorties → éditeur de story ;
-  - écran « Mon coach » (`screen-coach`) : discussion avec le coach IA, ouverte depuis la liste des sorties. La première question part toute seule ; la conversation vit dans le navigateur et repart de zéro à la déconnexion ;
+  - écran d'accueil : le coach est en premier (carte mise en avant, `coach-hero`), avec un aperçu de sa dernière réponse une fois la conversation commencée ; « Créer une story » et la liste des sorties viennent juste après, en second plan ;
+  - écran « Mon coach » (`screen-coach`) : discussion avec le coach IA, ouverte depuis la carte d'accueil. La première question part toute seule ; la conversation vit dans le navigateur et repart de zéro à la déconnexion ;
   - éditeur sur canvas 1080×1920 à base de calques (`text`, `stat`, `route`, `photo`) : glisser pour déplacer, pincer ou tirer la poignée pour redimensionner, aimantation au centre, annuler (↺ / Ctrl+Z) ;
   - onglets Modèles (6 : classique, minimal, chiffres, photo, sticker transparent, polaroid), Éléments, Photos (restent sur l'appareil, jamais envoyées), Style (fond, palettes, couleur du texte, polices Poppins / Bebas Neue / Anton / Oswald) ;
   - onglet Éléments : bloc « Texte écrit par l'IA » → 3 accroches à poser sur la story (une seule à la fois, le calque est réutilisé) + une légende à copier ;
