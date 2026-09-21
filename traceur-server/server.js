@@ -357,13 +357,20 @@ const PLAN_CONSIGNES = `Tu es le coach d'un sportif amateur français. Tu constr
 
 Types de séance possibles : repos, facile (footing tranquille), fractionne (allure soutenue / intervalles), longue (sortie longue), velo (vélo ou VTT en récupération active — uniquement s'il en fait déjà), renfo (renforcement musculaire).
 
-Règles :
+L'objectif reçu doit vraiment changer la forme du plan, pas juste sa description — deux sportifs avec le même historique mais des objectifs différents doivent recevoir des plans visiblement différents (volume, intensité, fréquence de repos) :
+- Mise en forme : priorité à la régularité, pas à la performance. Volume modéré, presque uniquement des séances faciles, au plus 1 séance un peu plus soutenue par semaine.
+- Progresser : introduis 1 à 2 séances de fractionné par semaine et une sortie longue qui grossit d'une semaine sur l'autre ; le plan doit être visiblement plus exigeant qu'un plan « mise en forme ».
+- Perte de poids / s'affiner : mise sur la fréquence et le volume plutôt que l'intensité — plus de séances faciles dans la semaine (quitte à en allonger certaines), peu ou pas de fractionné, du vélo en complément si le profil en fait déjà.
+- Reprise en douceur : très prudent. Uniquement des séances faciles et courtes au début, aucun fractionné sur les 14 jours, au moins 3 jours de repos par semaine, volume qui augmente à peine.
+- Objectif de course précis (voir la distance/dénivelé/date ci-dessous s'ils sont donnés) : construis une vraie progression qui mène à cette échéance, avec une sortie longue qui se rapproche de la distance visée et allège la semaine juste avant si l'échéance tombe dans les 14 jours.
+- Aucun objectif précis donné : traite comme « Mise en forme ».
+
+Autres règles :
 - Réponds pour les 14 jours (jour 0 à 13), même ceux déjà fixés par le sportif (voir plus bas si il y en a) : reprends simplement leur contenu tel quel pour ces jours-là, et construis le reste en cohérence autour.
-- Adapte le volume à ce qu'il fait déjà (tendance des dernières semaines) : progresse par paliers raisonnables, ne double jamais le volume brutalement.
+- Adapte le volume à ce qu'il fait déjà (tendance des dernières semaines) : progresse par paliers raisonnables, ne double jamais le volume brutalement, même pour « Progresser ».
 - Respecte son terrain habituel (trail vallonné ou route) dans les descriptions.
-- Alterne effort et récupération : jamais deux séances difficiles (fractionné/longue) d'affilée, au moins 1 à 2 jours de repos par semaine.
+- Alterne effort et récupération : jamais deux séances difficiles (fractionné/longue) d'affilée.
 - N'inclus du vélo que si son profil dit qu'il en fait déjà.
-- Si un objectif précis avec une date est donné, construis une progression qui mène à cette échéance (allège la semaine juste avant si elle tombe dans les 14 jours).
 - Si une distance cible est donnée, fais progresser la sortie longue vers cette distance sans jamais la dépasser dans les 14 jours (sauf si l'échéance est encore lointaine et que le volume actuel le permet largement) ; si un dénivelé cible est donné, inclus-le dans les sorties longues à l'approche de l'échéance.
 - description : une phrase courte et concrète (ex. « 8 km tranquille, terrain vallonné » ou « Repos complet »).
 
@@ -755,6 +762,9 @@ app.post("/api/objectif", async (req, res) => {
       Number.isFinite(distanceKm) && distanceKm > 0 ? distanceKm : null,
       Number.isFinite(deniveleM) && deniveleM >= 0 ? deniveleM : null
     );
+    // Un nouvel objectif doit se refléter tout de suite dans le plan, pas
+    // attendre jusqu'à 24h que le cache soit jugé périmé.
+    await pool.query(`update athletes set plan_updated_at = null where strava_id = $1`, [athleteId]);
     res.json({ ok: true });
   } catch (e) {
     console.error(e);
