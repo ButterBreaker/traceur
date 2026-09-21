@@ -6,16 +6,77 @@
 const express = require("express");
 const cookieSession = require("cookie-session");
 const path = require("path");
+const { Pool } = require("pg");
 const Anthropic = require("@anthropic-ai/sdk");
 const { z } = require("zod");
 const { zodOutputFormat } = require("@anthropic-ai/sdk/helpers/zod");
 
-const { STRAVA_CLIENT_ID, STRAVA_CLIENT_SECRET, SESSION_SECRET, ANTHROPIC_API_KEY, PORT = 3000 } = process.env;
+const { STRAVA_CLIENT_ID, STRAVA_CLIENT_SECRET, SESSION_SECRET, ANTHROPIC_API_KEY, DATABASE_URL, PORT = 3000 } = process.env;
 if (!STRAVA_CLIENT_ID || !STRAVA_CLIENT_SECRET || !SESSION_SECRET) {
   console.error("Variables manquantes : STRAVA_CLIENT_ID, STRAVA_CLIENT_SECRET, SESSION_SECRET");
   process.exit(1);
 }
 if (!ANTHROPIC_API_KEY) console.warn("ANTHROPIC_API_KEY absente : le recap IA sera désactivé.");
+if (!DATABASE_URL) console.warn("DATABASE_URL absente : le coach ne gardera pas de mémoire entre deux visites.");
+
+// La base sert de mémoire (compte + conversations avec le coach) : facultative,
+// le reste de l'appli marche sans (comme sans ANTHROPIC_API_KEY).
+const pool = DATABASE_URL
+  ? new Pool({
+      connectionString: DATABASE_URL,
+      ssl: /render\.com/.test(DATABASE_URL) ? { rejectUnauthorized: false } : false,
+    })
+  : null;
+
+async function preparerBase() {
+  if (!pool) return;
+  try {
+    await pool.query(`
+      create table if not exists athletes (
+        strava_id bigint primary key,
+        firstname text,
+        created_at timestamptz not null default now()
+      );
+      create table if not exists coach_messages (
+        id bigserial primary key,
+        strava_id bigint not null references athletes(strava_id) on delete cascade,
+        role text not null check (role in ('user', 'assistant')),
+        content text not null,
+        created_at timestamptz not null default now()
+      );
+      create index if not exists coach_messages_strava_id_idx on coach_messages(strava_id, id);
+    `);
+    console.log("Base de données prête.");
+  } catch (e) {
+    console.error("Base de données inaccessible :", e.message);
+  }
+}
+
+async function retenirAthlete(stravaId, firstname) {
+  if (!pool || !stravaId) return;
+  await pool.query(
+    `insert into athletes (strava_id, firstname) values ($1, $2)
+     on conflict (strava_id) do update set firstname = excluded.firstname`,
+    [stravaId, firstname || null]
+  );
+}
+
+async function chargerHistoriqueCoach(stravaId) {
+  if (!pool || !stravaId) return [];
+  const { rows } = await pool.query(
+    `select role, content from coach_messages where strava_id = $1 order by id desc limit 40`,
+    [stravaId]
+  );
+  return rows.reverse();
+}
+
+async function enregistrerEchangeCoach(stravaId, question, reponse) {
+  if (!pool || !stravaId) return;
+  await pool.query(
+    `insert into coach_messages (strava_id, role, content) values ($1, 'user', $2), ($1, 'assistant', $3)`,
+    [stravaId, question, reponse]
+  );
+}
 
 const app = express();
 app.set("trust proxy", 1); // Render est derrière un proxy HTTPS
@@ -65,12 +126,15 @@ app.get("/auth/callback", async (req, res) => {
       console.error("Échange de token refusé", r.status, data);
       return res.redirect("/?erreur=token");
     }
+    const athleteId = data.athlete && data.athlete.id;
     req.session.strava = {
       access_token: data.access_token,
       refresh_token: data.refresh_token,
       expires_at: data.expires_at,
       firstname: data.athlete && data.athlete.firstname,
+      athlete_id: athleteId,
     };
+    retenirAthlete(athleteId, req.session.strava.firstname).catch((e) => console.error("retenirAthlete:", e.message));
     res.redirect("/");
   } catch (e) {
     console.error(e);
@@ -108,6 +172,17 @@ async function getToken(req) {
 app.get("/api/me", (req, res) => {
   const s = req.session && req.session.strava;
   res.json(Object.assign({ ia: !!anthropic }, s ? { connected: true, firstname: s.firstname || "" } : { connected: false }));
+});
+
+app.get("/api/coach/history", async (req, res) => {
+  const s = req.session && req.session.strava;
+  if (!s || !s.athlete_id) return res.json({ messages: [] });
+  try {
+    res.json({ messages: await chargerHistoriqueCoach(s.athlete_id) });
+  } catch (e) {
+    console.error("chargerHistoriqueCoach:", e.message);
+    res.json({ messages: [] });
+  }
 });
 
 app.get("/api/activities", async (req, res) => {
@@ -324,6 +399,11 @@ app.post("/api/coach", async (req, res) => {
     });
     const txt = r.content.filter((b) => b.type === "text").map((b) => b.text).join("").trim();
     if (!txt) return res.status(502).json({ error: "ia_indisponible" });
+    const s = req.session && req.session.strava;
+    if (s && s.athlete_id) {
+      enregistrerEchangeCoach(s.athlete_id, messages[messages.length - 1].content, txt)
+        .catch((e) => console.error("enregistrerEchangeCoach:", e.message));
+    }
     res.json({ reponse: txt });
   } catch (e) {
     if (e instanceof Anthropic.RateLimitError) return res.status(429).json({ error: "trop_de_demandes" });
@@ -340,4 +420,6 @@ app.post("/api/coach", async (req, res) => {
 app.use(express.static(path.join(__dirname, "public")));
 app.get("/health", (req, res) => res.send("ok"));
 
-app.listen(PORT, () => console.log(`Traceur en ligne sur le port ${PORT}`));
+preparerBase().finally(() => {
+  app.listen(PORT, () => console.log(`Traceur en ligne sur le port ${PORT}`));
+});

@@ -2013,6 +2013,16 @@
       state.athleteName = me.firstname || "Athlète";
       state.connectStatus = "connected";
       setAccountUI();
+      if(state.iaDispo){
+        try{
+          var hist = await (await fetch("/api/coach/history", {credentials:"same-origin"})).json();
+          if(hist.messages && hist.messages.length){
+            state.coach.messages = hist.messages;
+            state.coach.demarre = true;
+            dessinerCoachHero();
+          }
+        }catch(e){}
+      }
       showScreen("screen-home");
       await loadActivities();
     } else {

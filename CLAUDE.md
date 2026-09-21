@@ -26,7 +26,7 @@ parle-lui en français, simplement, sans jargon, avec des étapes concrètes. R�
 
 ## Secrets
 Variables d'environnement sur Render uniquement, **jamais dans le code ni dans le dépôt** (il est public) :
-`STRAVA_CLIENT_ID`, `STRAVA_CLIENT_SECRET`, `SESSION_SECRET`, `NODE_ENV=production`, `ANTHROPIC_API_KEY`.
+`STRAVA_CLIENT_ID`, `STRAVA_CLIENT_SECRET`, `SESSION_SECRET`, `NODE_ENV=production`, `ANTHROPIC_API_KEY`, `DATABASE_URL`.
 Le Client Secret a été partagé en clair dans une conversation : il faudra le régénérer sur strava.com/settings/api puis le mettre à jour sur Render.
 
 ## Strava
@@ -46,7 +46,16 @@ Points communs :
 - Sans `ANTHROPIC_API_KEY`, le serveur démarre quand même, `/api/me` renvoie `ia:false`, et le bloc recap comme le bouton coach disparaissent.
 - Une clé se crée sur console.anthropic.com (facturation à l'usage). Si elle est refusée, les logs Render affichent « Clé ANTHROPIC_API_KEY refusée ».
 
-Le coach ne voit que les totaux : ni fréquence cardiaque, ni détail kilomètre par kilomètre, et il oublie tout d'une visite à l'autre (pas de base de données). Suite prévue : cardio et splits via `/api/v3/activities/{id}/streams` (Strava), puis un historique gardé côté serveur.
+Le coach ne voit que les totaux (ni fréquence cardiaque, ni détail kilomètre par kilomètre) — suite prévue : cardio et splits via `/api/v3/activities/{id}/streams` (Strava), puis Coros.
+
+## Base de données
+- Postgres sur Render (service `traceur-db`, plan gratuit — **expire 30 jours après création**, à recréer ou passer en payant avant l'échéance). Connectée via `DATABASE_URL`.
+- Facultative comme `ANTHROPIC_API_KEY` : sans elle, le serveur démarre quand même (juste un message dans les logs), mais le coach oublie tout d'une visite à l'autre.
+- Deux tables, créées toutes seules au démarrage (`preparerBase()` dans `server.js`) :
+  - `athletes` (`strava_id`, `firstname`) — un enregistrement par connexion Strava (`/auth/callback`).
+  - `coach_messages` (`strava_id`, `role`, `content`) — l'historique de la conversation avec le coach, 40 derniers messages chargés par `GET /api/coach/history`, alimentés à chaque `POST /api/coach` réussi.
+- Ce n'est pas lié à la session (cookie) : se reconnecter depuis un autre appareil retrouve la même conversation, tant que c'est le même compte Strava.
+- Mode exemple (sans compte) : aucune mémoire, comme avant — pas d'identité Strava à rattacher.
 
 ## Tester en local
 ```
