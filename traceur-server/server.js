@@ -168,6 +168,30 @@ async function getToken(req) {
   return data.access_token;
 }
 
+// Une session ouverte avant l'arrivée de la mémoire n'a pas d'identifiant
+// athlète (il n'est posé qu'à la connexion, dans /auth/callback). On le
+// retrouve ici auprès de Strava, une seule fois, sans demander à l'athlète
+// de se reconnecter.
+async function assurerAthleteId(req) {
+  const s = req.session && req.session.strava;
+  if (!s) return null;
+  if (s.athlete_id) return s.athlete_id;
+  const token = await getToken(req);
+  if (!token) return null;
+  try {
+    const r = await fetch("https://www.strava.com/api/v3/athlete", { headers: { Authorization: `Bearer ${token}` } });
+    if (!r.ok) return null;
+    const a = await r.json();
+    if (!a || !a.id) return null;
+    req.session.strava = { ...req.session.strava, athlete_id: a.id, firstname: s.firstname || a.firstname };
+    retenirAthlete(a.id, req.session.strava.firstname).catch((e) => console.error("retenirAthlete:", e.message));
+    return a.id;
+  } catch (e) {
+    console.error("assurerAthleteId:", e.message);
+    return null;
+  }
+}
+
 // ---------- API ----------
 app.get("/api/me", (req, res) => {
   const s = req.session && req.session.strava;
@@ -175,10 +199,10 @@ app.get("/api/me", (req, res) => {
 });
 
 app.get("/api/coach/history", async (req, res) => {
-  const s = req.session && req.session.strava;
-  if (!s || !s.athlete_id) return res.json({ messages: [] });
+  if (!req.session || !req.session.strava) return res.json({ messages: [] });
   try {
-    res.json({ messages: await chargerHistoriqueCoach(s.athlete_id) });
+    const athleteId = await assurerAthleteId(req);
+    res.json({ messages: athleteId ? await chargerHistoriqueCoach(athleteId) : [] });
   } catch (e) {
     console.error("chargerHistoriqueCoach:", e.message);
     res.json({ messages: [] });
@@ -399,9 +423,9 @@ app.post("/api/coach", async (req, res) => {
     });
     const txt = r.content.filter((b) => b.type === "text").map((b) => b.text).join("").trim();
     if (!txt) return res.status(502).json({ error: "ia_indisponible" });
-    const s = req.session && req.session.strava;
-    if (s && s.athlete_id) {
-      enregistrerEchangeCoach(s.athlete_id, messages[messages.length - 1].content, txt)
+    if (req.session && req.session.strava) {
+      assurerAthleteId(req)
+        .then((athleteId) => athleteId && enregistrerEchangeCoach(athleteId, messages[messages.length - 1].content, txt))
         .catch((e) => console.error("enregistrerEchangeCoach:", e.message));
     }
     res.json({ reponse: txt });
