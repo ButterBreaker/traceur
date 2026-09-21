@@ -441,6 +441,11 @@
   .add-photo{border:1.5px dashed var(--line);background:var(--surface);color:var(--text);border-radius:14px;padding:18px;font-family:inherit;font-weight:700;font-size:14px;cursor:pointer;}
   .add-photo:hover{border-color:var(--accent);}
   .note{font-size:11.5px;color:var(--text-dim);line-height:1.5;margin:0;}
+  .ia-box{display:flex;flex-direction:column;gap:9px;}
+  .ia-phrase{text-align:left;background:var(--surface);border:1px solid var(--line);color:var(--text);font-family:inherit;font-size:14px;font-weight:600;line-height:1.35;padding:12px 13px;border-radius:12px;cursor:pointer;}
+  .ia-phrase:hover{border-color:var(--accent);}
+  .ia-legende{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin:0;font-size:12.5px;line-height:1.55;color:var(--text);}
+  .ia-err{font-size:12px;color:var(--danger);margin:0;}
   .font-chip{font-size:15px !important;}
   .save-bar{position:sticky;bottom:0;padding:12px 0 calc(env(safe-area-inset-bottom,0px) + 12px);background:linear-gradient(rgba(14,14,16,0), var(--bg) 35%);margin-top:auto;z-index:4;}
   .save-bar .btn{width:100%;margin-top:0;}
@@ -676,7 +681,9 @@
     photos: [],
     history: [],
     guides: null,
-    tab: "presets"
+    tab: "presets",
+    iaDispo: false,
+    recap: {loading:false, phrases:[], legende:"", error:null}
   };
   var uid = 0;
   function nid(p){ return p + "-" + Date.now().toString(36) + "-" + (++uid); }
@@ -1332,8 +1339,88 @@
       (l.visible && available) ? el("button", {type:"button", class:"el-edit", text:"Modifier", onclick:function(){ select(l.id); inspectorEl.scrollIntoView({behavior:"smooth", block:"nearest"}); }}) : null
     ]);
   }
+  // ---------- texte écrit par l'IA ----------
+  var ERREURS_IA = {
+    ia_desactivee: "Le recap IA n'est pas activé sur le serveur.",
+    trop_de_demandes: "Trop de recaps demandés, réessaie dans un moment.",
+    sortie_invalide: "Cette sortie n'a pas assez de chiffres pour un recap.",
+    ia_indisponible: "L'IA ne répond pas, réessaie dans un instant."
+  };
+
+  async function demanderRecap(){
+    if(state.recap.loading) return;
+    var a = state.activity;
+    state.recap = {loading:true, phrases:[], legende:"", error:null};
+    buildTab();
+    try{
+      var r = await fetch("/api/recap", {
+        method:"POST", credentials:"same-origin",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          sport:a.sport, name:a.name, location:a.location, date:a.date,
+          distance_m:a.distance_m, moving_time_s:a.moving_time_s,
+          elevation_gain_m:a.elevation_gain_m, calories:a.calories
+        })
+      });
+      var data = await r.json().catch(function(){ return {}; });
+      if(!r.ok) throw new Error(data.error || "ia_indisponible");
+      state.recap = {loading:false, phrases:data.phrases || [], legende:data.legende || "", error:null};
+      if(!state.recap.phrases.length) state.recap.error = ERREURS_IA.ia_indisponible;
+    }catch(e){
+      state.recap = {loading:false, phrases:[], legende:"", error:ERREURS_IA[e.message] || ERREURS_IA.ia_indisponible};
+    }
+    if(state.activity === a) buildTab();
+  }
+
+  function poserPhrase(txt){
+    pushHistory();
+    var l = state.design.layers.filter(function(x){ return x.kind === "text" && x.key === "custom" && x.fromIA; })[0];
+    if(l) l.text = txt;
+    else {
+      l = textLayer("custom", {x:W/2, y:380, align:"center", size:48, shadow:true, text:txt});
+      l.fromIA = true;
+      state.design.layers.push(l);
+    }
+    state.selectedId = l.id;
+    refreshAll();
+    toast("Phrase posée sur la story");
+  }
+
+  async function copierLegende(txt){
+    try{ await navigator.clipboard.writeText(txt); toast("Légende copiée ✓"); }
+    catch(e){ toast("Copie impossible — sélectionne le texte à la main"); }
+  }
+
+  function iaBlock(){
+    var r = state.recap, box = el("div", {class:"ia-box"});
+    if(r.loading){
+      box.appendChild(el("p", {class:"note", text:"L'IA lit ta sortie…"}));
+      return box;
+    }
+    if(!r.phrases.length){
+      box.appendChild(el("button", {type:"button", class:"add-photo", text:"✨ Faire écrire mon texte par l'IA", onclick:demanderRecap}));
+      if(r.error) box.appendChild(el("p", {class:"ia-err", text:r.error}));
+      box.appendChild(el("p", {class:"note", text:"L'IA regarde tes chiffres et propose 3 accroches pour la story, plus une légende à copier. Seuls les chiffres de la sortie sont envoyés : jamais tes photos."}));
+      return box;
+    }
+    box.appendChild(el("p", {class:"note", text:"Touche une phrase pour la poser sur ta story."}));
+    r.phrases.forEach(function(p){
+      box.appendChild(el("button", {type:"button", class:"ia-phrase", text:p, onclick:function(){ poserPhrase(p); }}));
+    });
+    if(r.legende) box.appendChild(el("p", {class:"ia-legende", text:r.legende}));
+    box.appendChild(el("div", {class:"actions"}, [
+      r.legende ? btn("Copier la légende", function(){ copierLegende(r.legende); }) : null,
+      btn("Autres propositions", demanderRecap)
+    ]));
+    return box;
+  }
+
   function buildElementsTab(){
     var d = state.design, a = state.activity;
+    if(state.iaDispo){
+      tabPanel.appendChild(el("p", {class:"panel-title", text:"Texte écrit par l'IA"}));
+      tabPanel.appendChild(iaBlock());
+    }
     tabPanel.appendChild(el("p", {class:"panel-title", text:"Statistiques"}));
     var s = el("div", {class:"el-list"});
     STAT_ORDER.forEach(function(k){
@@ -1708,6 +1795,7 @@
   }
 
   function openStory(activity){
+    if(state.activity !== activity) state.recap = {loading:false, phrases:[], legende:"", error:null};
     state.activity = activity;
     storyTitle.textContent = activity.name;
     if(!state.design){
@@ -1783,6 +1871,7 @@
     fontsReady().then(redraw);
     var me = {connected:false};
     try{ me = await (await fetch("/api/me", {credentials:"same-origin"})).json(); }catch(e){}
+    state.iaDispo = !!me.ia;
     if(me.connected){
       state.athleteName = me.firstname || "Athlète";
       state.connectStatus = "connected";

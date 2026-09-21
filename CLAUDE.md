@@ -11,11 +11,12 @@ parle-lui en français, simplement, sans jargon, avec des étapes concrètes. R�
 - Render : build `cd traceur-server && npm ci`, start `cd traceur-server && node server.js`.
 
 ## Structure
-- `traceur-server/server.js` — Node/Express. Connexion Strava OAuth (`/auth/strava`, `/auth/callback`, `/auth/logout`), session en cookie signé (`cookie-session`, 30 jours), rafraîchissement auto du token, API `/api/me` et `/api/activities` (10 dernières sorties avec GPS, tracé en `summary_polyline`).
+- `traceur-server/server.js` — Node/Express. Connexion Strava OAuth (`/auth/strava`, `/auth/callback`, `/auth/logout`), session en cookie signé (`cookie-session`, 30 jours), rafraîchissement auto du token, API `/api/me` et `/api/activities` (10 dernières sorties avec GPS, tracé en `summary_polyline`), et `/api/recap` (recap IA, voir plus bas).
 - `traceur-server/public/index.html` — tout le front en un seul fichier (HTML + CSS + JS vanilla, aucune lib) :
   - écran de chargement → page de connexion (bouton Strava + « Voir un exemple sans compte ») → liste des sorties → éditeur de story ;
   - éditeur sur canvas 1080×1920 à base de calques (`text`, `stat`, `route`, `photo`) : glisser pour déplacer, pincer ou tirer la poignée pour redimensionner, aimantation au centre, annuler (↺ / Ctrl+Z) ;
   - onglets Modèles (6 : classique, minimal, chiffres, photo, sticker transparent, polaroid), Éléments, Photos (restent sur l'appareil, jamais envoyées), Style (fond, palettes, couleur du texte, polices Poppins / Bebas Neue / Anton / Oswald) ;
+  - onglet Éléments : bloc « Texte écrit par l'IA » → 3 accroches à poser sur la story (une seule à la fois, le calque est réutilisé) + une légende à copier ;
   - « Mon style » sauvegardé en localStorage (`traceur.monstyle.v1`) ;
   - export PNG : partage natif sur mobile (vers Instagram), téléchargement sur ordi ;
   - 4 sorties d'exemple codées en dur (`DEMO_ACTIVITIES`) pour le mode sans compte.
@@ -23,13 +24,20 @@ parle-lui en français, simplement, sans jargon, avec des étapes concrètes. R�
 
 ## Secrets
 Variables d'environnement sur Render uniquement, **jamais dans le code ni dans le dépôt** (il est public) :
-`STRAVA_CLIENT_ID`, `STRAVA_CLIENT_SECRET`, `SESSION_SECRET`, `NODE_ENV=production`.
+`STRAVA_CLIENT_ID`, `STRAVA_CLIENT_SECRET`, `SESSION_SECRET`, `NODE_ENV=production`, `ANTHROPIC_API_KEY`.
 Le Client Secret a été partagé en clair dans une conversation : il faudra le régénérer sur strava.com/settings/api puis le mettre à jour sur Render.
 
 ## Strava
 - App Strava : Client ID 280897. « Authorization Callback Domain » = `traceur.onrender.com`.
 - Mode test Strava : 1 seul athlète en plus du propriétaire. Pour ouvrir au public → demander la validation de l'app à Strava.
 - La liste d'activités Strava ne donne pas les calories (il faudrait l'endpoint détail par activité).
+
+## Recap IA
+- `POST /api/recap` : reçoit les chiffres d'une sortie, renvoie `{phrases:[3], legende}` via l'API Claude (`claude-opus-5`, effort `low`, sortie JSON validée avec zod).
+- Le serveur ne transmet jamais le texte du navigateur tel quel : il reconstruit une fiche propre (`ficheActivite`) à partir des nombres, et tronque le nom/lieu/date.
+- Garde-fou coût : 20 recaps par heure et par adresse IP (`quotas` en mémoire).
+- Sans `ANTHROPIC_API_KEY`, le serveur démarre quand même, `/api/me` renvoie `ia:false` et le bloc disparaît de l'appli.
+- Une clé se crée sur console.anthropic.com (facturation à l'usage, quelques centimes par recap).
 
 ## Tester en local
 ```
