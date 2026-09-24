@@ -92,6 +92,7 @@ async function preparerBase() {
       alter table athletes add column if not exists meteo_json text;
       alter table athletes add column if not exists meteo_updated_at timestamptz;
       alter table athletes add column if not exists push_subscription text;
+      alter table athletes add column if not exists consentement_at timestamptz;
     `);
     console.log("Base de données prête.");
   } catch (e) {
@@ -106,6 +107,15 @@ async function retenirAthlete(stravaId, firstname) {
      on conflict (strava_id) do update set firstname = excluded.firstname`,
     [stravaId, firstname || null]
   );
+}
+
+// Efface tout ce qu'on garde sur un athlète. Les tables liées (conversation,
+// objectif, plan) partent avec la ligne athletes (on delete cascade) ; le
+// cache des sorties n'y est pas rattaché, on le vide à part.
+async function supprimerDonneesAthlete(stravaId) {
+  if (!pool || !stravaId) return;
+  await pool.query(`delete from activity_details where strava_athlete_id = $1`, [stravaId]);
+  await pool.query(`delete from athletes where strava_id = $1`, [stravaId]);
 }
 
 async function chargerHistoriqueCoach(stravaId) {
@@ -694,7 +704,12 @@ function baseUrl(req) {
 }
 
 // ---------- OAuth Strava ----------
+// La fréquence cardiaque est une donnée de santé : pas de connexion sans
+// accord explicite (case cochée sur la page d'accueil), gardé en session
+// jusqu'au retour de Strava puis daté en base.
 app.get("/auth/strava", (req, res) => {
+  if (req.query.consentement !== "1") return res.redirect("/?erreur=consentement");
+  req.session.consentement = true;
   const params = new URLSearchParams({
     client_id: STRAVA_CLIENT_ID,
     redirect_uri: `${baseUrl(req)}/auth/callback`,
@@ -732,8 +747,15 @@ app.get("/auth/callback", async (req, res) => {
       firstname: data.athlete && data.athlete.firstname,
       athlete_id: athleteId,
     };
-    retenirAthlete(athleteId, req.session.strava.firstname).catch((e) => console.error("retenirAthlete:", e.message));
-    enregistrerToken(athleteId, data).catch((e) => console.error("enregistrerToken:", e.message));
+    const consenti = !!req.session.consentement;
+    req.session.consentement = null;
+    try {
+      await retenirAthlete(athleteId, req.session.strava.firstname);
+      await enregistrerToken(athleteId, data);
+      if (consenti && pool) await pool.query(`update athletes set consentement_at = now() where strava_id = $1`, [athleteId]);
+    } catch (e) {
+      console.error("retenirAthlete:", e.message);
+    }
     res.redirect("/");
   } catch (e) {
     console.error(e);
@@ -877,9 +899,60 @@ async function activitesPourCoach(req, activitesDemo) {
 }
 
 // ---------- API ----------
-app.get("/api/me", (req, res) => {
+app.get("/api/me", async (req, res) => {
   const s = req.session && req.session.strava;
-  res.json(Object.assign({ ia: !!anthropic }, s ? { connected: true, firstname: s.firstname || "" } : { connected: false }));
+  if (!s) return res.json({ ia: !!anthropic, connected: false });
+  // Comptes connectés avant l'arrivée des textes légaux : on redemande l'accord.
+  let consentement = true;
+  if (pool) {
+    try {
+      const athleteId = await assurerAthleteId(req);
+      if (athleteId) {
+        const { rows } = await pool.query(`select consentement_at from athletes where strava_id = $1`, [athleteId]);
+        consentement = !!(rows.length && rows[0].consentement_at);
+      }
+    } catch (e) {
+      console.error("consentement:", e.message);
+    }
+  }
+  res.json({ ia: !!anthropic, connected: true, firstname: s.firstname || "", consentement });
+});
+
+app.post("/api/consentement", async (req, res) => {
+  if (!req.session || !req.session.strava) return res.status(401).json({ error: "non_connecte" });
+  if (!pool) return res.json({ ok: true });
+  try {
+    const athleteId = await assurerAthleteId(req);
+    if (!athleteId) return res.status(401).json({ error: "non_connecte" });
+    await pool.query(`update athletes set consentement_at = now() where strava_id = $1`, [athleteId]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(502).json({ error: "indisponible" });
+  }
+});
+
+// Supprime tout : données en base, puis révoque l'accès de Traceur côté
+// Strava (le sportif n'a pas besoin d'aller le faire lui-même dans ses
+// réglages Strava), puis ferme la session.
+app.post("/api/compte/supprimer", async (req, res) => {
+  if (!req.session || !req.session.strava) return res.status(401).json({ error: "non_connecte" });
+  try {
+    const athleteId = await assurerAthleteId(req);
+    const token = await getToken(req);
+    if (token) {
+      await fetch("https://www.strava.com/oauth/deauthorize", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      }).catch((e) => console.error("deauthorize:", e.message));
+    }
+    if (athleteId) await supprimerDonneesAthlete(athleteId);
+    req.session = null;
+    res.json({ ok: true });
+  } catch (e) {
+    console.error("supprimer compte:", e.message);
+    res.status(502).json({ error: "indisponible" });
+  }
 });
 
 app.get("/api/coach/history", async (req, res) => {
@@ -944,9 +1017,10 @@ app.post("/api/localisation", async (req, res) => {
   try {
     const athleteId = await assurerAthleteId(req);
     if (!athleteId) return res.status(401).json({ error: "non_connecte" });
+    // Arrondi à ~1 km : assez pour la météo, sans garder l'adresse exacte.
     await pool.query(
       `update athletes set lat = $2, lon = $3, meteo_json = null, meteo_updated_at = null, plan_updated_at = null where strava_id = $1`,
-      [athleteId, lat, lon]
+      [athleteId, Math.round(lat * 100) / 100, Math.round(lon * 100) / 100]
     );
     res.json({ ok: true });
   } catch (e) {
@@ -1480,7 +1554,36 @@ app.post("/webhook/strava", (req, res) => {
   if (ev.object_type === "activity" && ev.aspect_type === "create" && ev.owner_id && ev.object_id) {
     preChargerNouvelleActivite(ev.owner_id, ev.object_id).catch((e) => console.error("preChargerNouvelleActivite:", e.message));
   }
+  // Le sportif a retiré l'accès à Traceur depuis ses réglages Strava : on
+  // efface tout ce qu'on avait sur lui, comme avec le bouton de suppression.
+  if (ev.object_type === "athlete" && ev.updates && String(ev.updates.authorized) === "false" && ev.owner_id) {
+    supprimerSiAccesRevoque(ev.owner_id).catch((e) => console.error("supprimerSiAccesRevoque:", e.message));
+  }
 });
+
+// Strava ne signe pas ses webhooks : n'importe qui pourrait envoyer un faux
+// « accès retiré ». Avant d'effacer, on vérifie auprès de Strava que notre
+// refresh token est vraiment refusé.
+async function supprimerSiAccesRevoque(athleteId) {
+  if (!pool) return;
+  const { rows } = await pool.query(`select refresh_token from athletes where strava_id = $1`, [athleteId]);
+  if (!rows.length || !rows[0].refresh_token) return;
+  const r = await fetch("https://www.strava.com/oauth/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      client_id: STRAVA_CLIENT_ID,
+      client_secret: STRAVA_CLIENT_SECRET,
+      grant_type: "refresh_token",
+      refresh_token: rows[0].refresh_token,
+    }),
+  });
+  if (r.ok) {
+    await enregistrerToken(athleteId, await r.json());
+    return;
+  }
+  if (r.status === 400 || r.status === 401) await supprimerDonneesAthlete(athleteId);
+}
 
 // ---------- Frontend ----------
 app.use(express.static(path.join(__dirname, "public")));

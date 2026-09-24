@@ -306,7 +306,7 @@
   #screen-splash .brand{opacity:.9;animation:pulse 1.4s ease-in-out infinite;}
 
   /* ---------- page de connexion ---------- */
-  #screen-login{padding-top:calc(env(safe-area-inset-top,0px) + 22px);}
+  #screen-login,#screen-consent{padding-top:calc(env(safe-area-inset-top,0px) + 22px);}
   .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px;letter-spacing:.2px;}
   .brand svg{flex:none;}
   .login-hero{
@@ -371,6 +371,14 @@
     font-size:11px;color:#6f6c72;text-align:center;line-height:1.5;
     margin:6px 0 0;
   }
+  .consent{display:flex;gap:10px;align-items:flex-start;font-size:12.5px;line-height:1.5;color:var(--text-dim);margin:auto 0 12px;cursor:pointer;}
+  .consent input{flex:none;width:18px;height:18px;margin:1px 0 0;accent-color:var(--accent);}
+  .consent a,.legal-links a{color:var(--text);}
+  .consent + .strava-btn{margin-top:0;}
+  #screen-consent .btn-primary{width:100%;}
+  .legal-links{margin-top:10px;}
+  .danger-link{background:none;border:none;color:var(--danger);font-family:inherit;font-size:13px;font-weight:600;padding:14px 0;cursor:pointer;text-decoration:underline;text-underline-offset:3px;}
+  .danger-link:disabled{opacity:.6;cursor:default;}
   .btn:focus-visible,.demo-link:focus-visible,.back-btn:focus-visible{outline:2px solid var(--accent-2);outline-offset:2px;}
   @media (prefers-reduced-motion: reduce){ #screen-splash .brand,.dot.busy{animation:none;} }
   [hidden]{display:none!important;}
@@ -565,9 +573,27 @@
       <div class="step"><b>2</b>Choisis une sortie</div>
       <div class="step"><b>3</b>Partage</div>
     </div>
-    <button class="btn strava-btn" id="login-btn">Se connecter avec Strava</button>
+    <label class="consent">
+      <input type="checkbox" id="login-consent">
+      <span>J'ai 15 ans ou plus et j'accepte les <a href="/cgu.html" target="_blank">conditions d'utilisation</a> et la <a href="/confidentialite.html" target="_blank">politique de confidentialité</a>, y compris l'analyse de ma fréquence cardiaque (donnée de santé) par le coach IA.</span>
+    </label>
+    <button class="btn strava-btn" id="login-btn" disabled>Se connecter avec Strava</button>
     <button class="demo-link" id="demo-btn">Voir un exemple sans compte</button>
     <p class="login-foot">Accès en lecture seule à tes activités. Rien n'est publié sans toi.</p>
+    <p class="login-foot legal-links"><a href="/mentions-legales.html">Mentions légales</a> · <a href="/confidentialite.html">Confidentialité</a> · <a href="/cgu.html">CGU</a></p>
+  </div>
+
+  <!-- ===== CONSENTEMENT (comptes connectés avant les textes légaux) ===== -->
+  <div class="screen" id="screen-consent">
+    <div class="brand"><svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><rect width="26" height="26" rx="8" fill="#19181b"/><path d="M6 18c2-6 5 1 7-5s4-4 7-6" fill="none" stroke="#ff8a2e" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="18" r="1.8" fill="#fff"/><circle cx="20" cy="7" r="2" fill="#ff6a2e"/></svg>Traceur</div>
+    <h2 class="login-title">Du nouveau côté <em>données</em></h2>
+    <p class="login-sub">Traceur a maintenant des conditions d'utilisation et une politique de confidentialité. Elles expliquent ce qu'on garde, pourquoi, et comment tout supprimer. Ton accord est nécessaire pour continuer.</p>
+    <label class="consent">
+      <input type="checkbox" id="consent-check">
+      <span>J'ai 15 ans ou plus et j'accepte les <a href="/cgu.html" target="_blank">conditions d'utilisation</a> et la <a href="/confidentialite.html" target="_blank">politique de confidentialité</a>, y compris l'analyse de ma fréquence cardiaque (donnée de santé) par le coach IA.</span>
+    </label>
+    <button class="btn btn-primary" id="consent-btn" disabled>Continuer</button>
+    <button class="demo-link" id="consent-refus">Refuser et supprimer mon compte</button>
   </div>
 
   <!-- ===== ÉCRAN 1 : liste des activités ===== -->
@@ -648,6 +674,8 @@
     <div id="profil-records"></div>
     <p class="note" id="profil-meteo-statut"></p>
     <p class="note" id="profil-push-statut"></p>
+    <p class="login-foot legal-links"><a href="/mentions-legales.html">Mentions légales</a> · <a href="/confidentialite.html">Confidentialité</a> · <a href="/cgu.html">CGU</a></p>
+    <button class="danger-link" id="profil-supprimer-btn">Supprimer mon compte et mes données</button>
     <div class="save-bar">
       <button class="btn" id="profil-meteo-btn" hidden>Activer la météo dans mon plan</button>
       <button class="btn" id="profil-push-btn" hidden>Activer les rappels du jour</button>
@@ -2566,7 +2594,8 @@
   var ERREURS = {
     refus: "Connexion Strava annulée.",
     token: "Strava a refusé la connexion — réessaie.",
-    reseau: "Problème réseau pendant la connexion — réessaie."
+    reseau: "Problème réseau pendant la connexion — réessaie.",
+    consentement: "Coche la case pour accepter les conditions avant de te connecter."
   };
 
   async function loadActivities(){
@@ -2597,8 +2626,11 @@
     ].map(function(f){ return document.fonts.load(f).catch(function(){}); }));
   }
 
+  var loginConsent = $("login-consent");
+  loginConsent.addEventListener("change", function(){ loginBtn.disabled = !loginConsent.checked; });
+
   async function showLogin(){
-    loginBtn.disabled = false;
+    loginBtn.disabled = !loginConsent.checked;
     loginBtn.textContent = "Se connecter avec Strava";
     showScreen("screen-login");
     await fontsReady();
@@ -2608,12 +2640,48 @@
     renderDesign(loginCanvas, d, DEMO_ACTIVITIES[0], {export:true});
   }
 
+  // Le bouton « Connecter Strava » de l'accueil (mode exemple) passe aussi
+  // par la page de connexion tant que la case n'est pas cochée.
   function goStrava(){
+    if(!loginConsent.checked){ showLogin(); toast(ERREURS.consentement); return; }
     loginBtn.disabled = true;
     loginBtn.textContent = "Redirection vers Strava…";
     state.connectStatus = "connecting"; setAccountUI();
-    location.href = "/auth/strava";
+    location.href = "/auth/strava?consentement=1";
   }
+
+  async function supprimerCompte(){
+    if(!confirm("Supprimer définitivement ton compte Traceur ?\n\nTout sera effacé : conversation avec le coach, objectif, plan, réglages. L'accès de Traceur à ton Strava sera aussi retiré. Tes sorties restent sur Strava.")) return false;
+    try{
+      var r = await fetch("/api/compte/supprimer", {method:"POST", credentials:"same-origin"});
+      if(!r.ok) throw new Error();
+    }catch(e){
+      toast("La suppression n'a pas pu aboutir, réessaie dans un instant.");
+      return false;
+    }
+    location.href = "/";
+    return true;
+  }
+
+  var consentCheck = $("consent-check"), consentBtn = $("consent-btn");
+  consentCheck.addEventListener("change", function(){ consentBtn.disabled = !consentCheck.checked; });
+  consentBtn.addEventListener("click", async function(){
+    consentBtn.disabled = true;
+    try{
+      var r = await fetch("/api/consentement", {method:"POST", credentials:"same-origin"});
+      if(!r.ok) throw new Error();
+      location.reload();
+    }catch(e){
+      consentBtn.disabled = false;
+      toast("Impossible d'enregistrer ton accord, réessaie.");
+    }
+  });
+  $("consent-refus").addEventListener("click", supprimerCompte);
+  $("profil-supprimer-btn").addEventListener("click", async function(){
+    var b = $("profil-supprimer-btn");
+    b.disabled = true;
+    if(!(await supprimerCompte())) b.disabled = false;
+  });
 
   async function init(){
     var params = new URLSearchParams(location.search);
@@ -2625,6 +2693,10 @@
     state.iaDispo = !!me.ia;
     coachHero.hidden = !state.iaDispo;
     dessinerCoachHero();
+    if(me.connected && me.consentement === false){
+      showScreen("screen-consent");
+      return;
+    }
     if(me.connected){
       state.athleteName = me.firstname || "Athlète";
       state.connectStatus = "connected";
